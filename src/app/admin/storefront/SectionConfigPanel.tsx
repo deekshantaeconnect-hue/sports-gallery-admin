@@ -11,11 +11,7 @@ import { useState } from "react";
 import { AdminProductSearchModal } from "../AdminProductSearchModal";
 
 export function SectionConfigPanel() {
-  // NOTE: Pulling global state and updater function from Zustand. 
-  // updateSectionSettings allows us to patch specific keys within a section's settings object.
   const { sections, activeSectionId, updateSectionSettings } = useStorefrontStore();
-
-  // NOTE: Find the currently selected section in the sidebar so we can render the correct config UI.
   const activeSection = sections.find((s) => s.id === activeSectionId);
 
   const isValidImageUrl = (url?: string) => {
@@ -34,18 +30,15 @@ export function SectionConfigPanel() {
   const isVideoShoppable = activeSection?.type === "VIDEO_SHOPPABLE";
   const isHeroSection = activeSection?.type === "HERO";
   
-  // 🔥 All these blocks need the Collections data
   const needsCollectionsData =
     isCollectionBlock ||
     isProductCarousel ||
     isVideoShoppable ||
     isHeroSection;
 
-  // LOCAL STATE FOR MODAL
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [activeSlideIndex, setActiveSlideIndex] = useState<number | null>(null);
 
-  // FETCH COLLECTIONS
   const {
     data: collections,
     isLoading: isLoadingCollections,
@@ -91,15 +84,6 @@ export function SectionConfigPanel() {
 
   const safeCollections = collections || [];
 
-  // ==================================================
-  // NOTE: IMAGE DIMENSION & OPTIMIZATION GUIDELINES
-  // ==================================================
-  // This is a centralized dictionary mapping each section type to its optimal image specs.
-  // WHY THIS MATTERS: 
-  // 1. Performance: Restricting sizes (e.g., Max 300KB, WebP) protects the storefront's 
-  //    load speeds and Core Web Vitals (LCP), preventing admins from uploading raw 5MB photos.
-  // 2. UI Consistency: Enforcing strict aspect ratios (e.g., 16:9 for Hero, 4:3 for Story) 
-  //    ensures the layout doesn't break or stretch awkwardly on the frontend.
   const IMAGE_GUIDELINES = {
     HERO: "1920×800px • 16:9 • Max 500KB • WebP preferred",
     PROMO_BANNER: "1200×500px • 12:5 • Max 300KB • WebP/JPG",
@@ -110,7 +94,6 @@ export function SectionConfigPanel() {
 
   return (
     <div className="p-8 space-y-8 animate-in slide-in-from-right-4 duration-300">
-      {/* ADD MODAL AT THE TOP LEVEL OF THE RETURN */}
       <AdminProductSearchModal
         isOpen={productSearchOpen}
         onClose={() => {
@@ -159,7 +142,7 @@ export function SectionConfigPanel() {
           />
         </div>
 
-        {/* COLLECTIONS SELECTOR (Only shows for the explicit COLLECTIONS grid block) */}
+        {/* COLLECTIONS SELECTOR */}
         {isCollectionBlock && (
           <div className="space-y-3 pt-2">
             <div className="flex justify-between items-center">
@@ -191,7 +174,6 @@ export function SectionConfigPanel() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {safeCollections.map((col: any) => {
-                  // Safely compare IDs as strings to prevent matching bugs
                   const isSelected = String(selectedCollectionId) === String(col.id);
                   
                   return (
@@ -201,9 +183,7 @@ export function SectionConfigPanel() {
                       onClick={() => handleSelectCollection(col.id, col.slug)}
                       className={`px-4 py-2 text-xs font-bold rounded-full border transition-all duration-200 flex items-center gap-1.5 ${
                         isSelected
-                          // ACTIVE / SELECTED STATE: Dark green background, white text, ring glow
                           ? "bg-[#006044] text-white border-[#006044] shadow-md ring-2 ring-offset-2 ring-[#006044]/30 scale-105"
-                          // INACTIVE STATE: White background, gray text
                           : "bg-white text-zinc-600 border-zinc-200 hover:border-[#006044] hover:bg-[#006044]/5 hover:text-[#006044]"
                       }`}
                     >
@@ -252,6 +232,7 @@ export function SectionConfigPanel() {
                   uploadPreset={
                     process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
                   }
+                  options={{ multiple: false }} // Limit to single upload for Promo/Brand
                   onSuccess={(result: any) => {
                     if (result.event === "success") {
                       const fileSizeKB = result.info.bytes / 1024;
@@ -281,16 +262,6 @@ export function SectionConfigPanel() {
                 </CldUploadWidget>
               )}
             </div>
-            
-            {/* ================================================== */}
-            {/* NOTE: DYNAMIC GUIDELINE WARNING UI                 */}
-            {/* ================================================== */}
-            {/* This warning box actively updates based on which block the admin is editing. 
-                By using `activeSection.type` as the key, we pull the exact string from the 
-                IMAGE_GUIDELINES dictionary above.
-                
-                UX Tip: It is styled with 'amber' (yellow/orange) colors to immediately 
-                draw the admin's attention *before* they click the upload button. */}
             <p className="mt-3 px-4 py-3 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 text-xs font-semibold">
               ⚠ Recommended:{" "}
               <span className="font-bold">
@@ -359,17 +330,15 @@ export function SectionConfigPanel() {
         )}
 
         {/* ================================================== */}
-        {/* HERO CONFIGURATION (HEAVILY ANNOTATED)             */}
+        {/* HERO CONFIGURATION                                 */}
         {/* ================================================== */}
         {activeSection.type === "HERO" && (
           <div className="space-y-4 pt-2">
             <div className="flex justify-between items-center">
               <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                Hero Slides
+                Hero Slides (Max 5)
               </label>
 
-              {/* NOTE: Manual refetch button. If the admin just added a new collection in another tab, 
-                  this triggers the TanStack Query refetch function to pull fresh data into the dropdowns below. */}
               <button
                 onClick={() => refetch()}
                 disabled={isFetching}
@@ -384,8 +353,6 @@ export function SectionConfigPanel() {
 
             {/* Existing Slides List */}
             <div className="space-y-3">
-              {/* NOTE: We map over the banners array. The `|| []` fallback is critical—if the banners array 
-                  is undefined (e.g. newly added section), this prevents a fatal .map() crash. */}
               {((activeSection.settings.banners as any[]) || []).map(
                 (slide, index) => (
                   <div
@@ -393,41 +360,32 @@ export function SectionConfigPanel() {
                     className="flex items-start gap-4 p-4 bg-zinc-50 border border-zinc-200 rounded-2xl"
                   >
                     {/* Thumbnail Preview */}
-                    {/* NOTE: Displays the image uploaded to Cloudinary for this specific slide */}
                     <img
                       src={slide.imageUrl}
                       alt={`Slide ${index}`}
                       className="w-20 h-14 object-cover rounded-xl border"
                     />
 
-                    {/* Slide Config (Links & Dropdowns) */}
+                    {/* Slide Config */}
                     <div className="flex-1 space-y-3">
-                      
-                      {/* NOTE: Collection Selector. Automatically generates the internal link based on selection. */}
                       <select
                         value={slide.collectionId || ""}
                         onChange={(e) => {
-                          // Find the full collection object from the dropdown selection to extract its slug
                           const selectedCollection = safeCollections.find(
                             (c: any) => c.id === e.target.value
                           );
-
-                          // Create a shallow copy of the banners array to avoid mutating state directly (React best practice)
                           const newBanners = [
                             ...(activeSection.settings.banners as any[]),
                           ];
 
-                          // Update the specific slide at this index
                           newBanners[index] = {
                             ...newBanners[index],
                             collectionId: selectedCollection?.id || "",
-                            // NOTE: Auto-formatting the link path here saves the admin from typing it out manually
                             link: selectedCollection
                               ? `/collections/${selectedCollection.slug}`
                               : "",
                           };
 
-                          // Push the updated array back to Zustand global state. This triggers a re-render.
                           updateSectionSettings(activeSection.id, {
                             banners: newBanners,
                           });
@@ -445,8 +403,6 @@ export function SectionConfigPanel() {
                         ))}
                       </select>
 
-                      {/* NOTE: Custom Link Input. Allows admins to override the auto-generated collection link 
-                            with an external site or a highly specific internal page. */}
                       <input
                         type="text"
                         value={slide.link || ""}
@@ -456,7 +412,6 @@ export function SectionConfigPanel() {
                             ...newBanners[index],
                             link: e.target.value,
                           };
-                          // NOTE: Save the custom link to the Zustand store
                           updateSectionSettings(activeSection.id, {
                             banners: newBanners,
                           });
@@ -466,7 +421,6 @@ export function SectionConfigPanel() {
                       />
                     </div>
 
-                    {/* NOTE: Slide Deletion. Filters out the slide at the current index and updates the store. */}
                     <button
                       type="button"
                       onClick={() => {
@@ -488,41 +442,55 @@ export function SectionConfigPanel() {
             </div>
 
             {/* Upload New Hero Slide */}
-            {/* NOTE: Cloudinary Upload Widget. This handles uploading the image FIRST to Cloudinary.
-                Upon success, it appends a new slide object (containing the secure URL) to the end of the banners array. */}
-            <CldUploadWidget
-              uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
-              onSuccess={(result: any) => {
-                if (result.event === "success") {
-                  const currentBanners =
-                    (activeSection.settings.banners as any[]) || [];
+            {(((activeSection.settings.banners as any[]) || []).length < 5) ? (
+              <CldUploadWidget
+                uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
+                options={{
+                  multiple: true, // Allow batch uploads
+                  maxFiles: 5,    // Native limit in Cloudinary file picker
+                }}
+                onSuccess={(result: any) => {
+                  if (result.event === "success") {
+                    // 🚀 BUG FIX: Prevent "Stale Closures" which caused images to overwrite each other.
+                    // By grabbing the state directly from the store on every success callback, 
+                    // we guarantee we are appending to the most up-to-date array during batch uploads.
+                    const freshSections = useStorefrontStore.getState().sections;
+                    const freshSection = freshSections.find((s) => s.id === activeSection.id);
+                    const currentBanners = (freshSection?.settings?.banners as any[]) || [];
 
-                  updateSectionSettings(activeSection.id, {
-                    banners: [
-                      ...currentBanners,
-                      {
-                        imageUrl: result.info.secure_url, // URL returned from Cloudinary
-                        collectionId: "",
-                        link: "",
-                      },
-                    ],
-                  });
-                }
-              }}
-            >
-              {({ open }) => (
-                <button
-                  type="button"
-                  onClick={() => open()}
-                  className="w-full py-4 border-2 border-dashed border-[#006044]/30 rounded-2xl flex items-center justify-center gap-2 text-[#006044] font-bold text-xs mt-2"
-                >
-                  <Upload size={16} />
-                  Add New Slide
-                </button>
-              )}
-            </CldUploadWidget>
+                    // Enforce absolute max of 5
+                    if (currentBanners.length >= 5) return;
 
-            {/* NOTE: Hero Dimension Warning inserted right below the upload button */}
+                    updateSectionSettings(activeSection.id, {
+                      banners: [
+                        ...currentBanners,
+                        {
+                          imageUrl: result.info.secure_url,
+                          collectionId: "",
+                          link: "",
+                        },
+                      ],
+                    });
+                  }
+                }}
+              >
+                {({ open }) => (
+                  <button
+                    type="button"
+                    onClick={() => open()}
+                    className="w-full py-4 border-2 border-dashed border-[#006044]/30 rounded-2xl flex items-center justify-center gap-2 text-[#006044] font-bold text-xs mt-2 hover:bg-[#006044]/5 transition-all"
+                  >
+                    <Upload size={16} />
+                    Add New Slide (Select up to 5)
+                  </button>
+                )}
+              </CldUploadWidget>
+            ) : (
+              <div className="w-full py-4 border border-amber-200 bg-amber-50 rounded-2xl flex items-center justify-center gap-2 text-amber-700 font-bold text-xs mt-2">
+                Maximum limit of 5 slides reached. Remove a slide to add more.
+              </div>
+            )}
+
             <p className="mt-3 px-4 py-3 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 text-xs font-semibold">
               ⚠ Recommended:{" "}
               <span className="font-bold">
@@ -828,6 +796,7 @@ export function SectionConfigPanel() {
                             process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
                           }
                           options={{
+                            multiple: false,
                             clientAllowedFormats: ["mp4", "webm", "mov", "gif"],
                           }}
                           onSuccess={(result: any) => {
