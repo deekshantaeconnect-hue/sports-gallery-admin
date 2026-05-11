@@ -45,3 +45,4 @@ next-env.d.ts
 /public/apple-touch-icon.png
 /public/favicon-32x32.png
 /public/favicon-192x192.png
+.env*.local

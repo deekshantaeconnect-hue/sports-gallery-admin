@@ -134,9 +134,9 @@ export default function AdminOrdersPage() {
 
       <DataTable
         columns={tableColumns}
-        data={data?.data || []}
-        pageCount={data?.meta?.totalPages || 1}
-        totalItems={data?.meta?.total || 0}
+        data={data?.data?.pages || []}
+        pageCount={data?.data?.pageCount || 1}
+        totalItems={data?.data?.totalItems || 0}
         isLoading={isLoading}
       />
     </div>

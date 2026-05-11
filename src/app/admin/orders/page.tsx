@@ -63,7 +63,10 @@ export default function AdminOrdersPage() {
   // Fetch Data
   const { data: responseData, isLoading } = useQuery({
     queryKey: ["admin-orders", { page, search, tab }],
-    queryFn: () => AdminOrdersService.getOrders({ page, limit: 15, search, tab }),
+    queryFn: async () => {
+      const response = await AdminOrdersService.getOrders({ page, limit: 15, search, tab });
+      return response.data;
+    },
   });
 
   // Extract the actual array of orders from the response payload
