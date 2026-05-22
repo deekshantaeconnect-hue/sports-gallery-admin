@@ -4,7 +4,7 @@
 import { use, useState, useEffect } from "react";
 import useSWR from "swr";
 import apiClient from "@/lib/api-client";
-import CancelOrderModal from "../CancelOrderModal"; 
+import CancelOrderModal from "../CancelOrderModal";
 import {
   Package,
   XCircle,
@@ -15,6 +15,7 @@ import {
   Mail,
 } from "lucide-react";
 import { AdminTrackingLogs } from "../AdminTrackingLogs";
+import { resolveFirstProductImage } from "@/shared/utils/media-normalization";
 
 // 🔥 FOOLPROOF FETCHER
 const fetcher = async (url: string) => {
@@ -108,11 +109,11 @@ export default function AdminOrderDetailsPage({
   // --- SAFE FALLBACKS (Prevents .length crashes) ---
   // Guarantees it is always a valid string, even if the API sends null
   const currentStatus = order?.status ? String(order.status) : "PENDING";
-  
+
   // Safely grab the array, fallback to empty array if the status string is unrecognized
   const rawActions = ORDER_TRANSITIONS[currentStatus];
   const availableActions = Array.isArray(rawActions) ? rawActions : [];
-  
+
   const hasAddress = order.addressSnapshot && order.addressSnapshot.name;
 
   // --- ACTION HANDLER ---
@@ -257,15 +258,18 @@ export default function AdminOrderDetailsPage({
               </div>
               <div className="divide-y divide-gray-100">
                 {order.items && Array.isArray(order.items) ? (
-                  order.items.map((item: any) => (
+                  order.items.map((item: any) => {
+                    const itemImageUrl = resolveFirstProductImage(item?.product?.images);
+                    
+                    return (
                     <div
                       key={item.id}
                       className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors"
                     >
                       <div className="h-16 w-16 bg-white rounded-lg border border-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden p-1">
-                        {item?.product?.images?.[0] ? (
+                        {itemImageUrl ? (
                           <img
-                            src={item.product.images[0]}
+                            src={itemImageUrl}
                             alt={item.product?.name || "product"}
                             className="h-full w-full object-contain"
                           />
@@ -293,8 +297,8 @@ export default function AdminOrderDetailsPage({
                           Qty: {item?.quantity || 1}
                         </p>
                       </div>
-                    </div>
-                  ))
+                    </div>);
+})
                 ) : (
                   <div className="p-4 text-center text-gray-500">
                     No items found in this order.

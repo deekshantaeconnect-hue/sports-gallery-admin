@@ -3,6 +3,20 @@
 
 import { z } from "zod";
 
+
+
+// Match your exact custom media type strings
+export const mediaTypeSchema = z.enum(["image", "video", "gif"]);
+
+// 🔥 NEW: Explicit object validator matching your custom MediaItem interface
+export const mediaItemSchema = z.object({
+  url: z.string().url("Each media item must contain a valid URL string"),
+  publicId: z.string().optional().nullable(),
+  type: mediaTypeSchema,
+  posterUrl: z.string().optional().nullable(),
+});
+
+
 export const variantSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Variant name is required"),
@@ -29,7 +43,9 @@ export const productFormSchema = z.object({
   isFeatured: z.boolean(),
   isCodEnabled: z.boolean(),
   
-  images: z.array(z.string().url()).min(1, "At least one image is required"),
+  // 🔥 UPDATED: Shifted from simple URL arrays to an object array using mediaItemSchema
+  images: z.array(mediaItemSchema).min(1, "At least one image is required"),
+  
   highlightIds: z.array(z.string()),
   
   variants: z.array(variantSchema).min(1, "At least one variant is required"),

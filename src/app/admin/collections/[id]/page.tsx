@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { CldUploadWidget } from "next-cloudinary";
+import { resolveFirstProductImage } from "@/shared/utils/media-normalization"; // 🔥 IMPORT NEW RESOLVER HELPER
 
 const DEBUG = true;
 
@@ -45,10 +46,10 @@ function logWarn(scope: string, message: string, data?: any) {
   console.warn(prefix, style, message, data);
 }
 
-// 🚨 HELPER: Safely check if a string is a valid URL to prevent Next.js crashes
+// Helper to keep checking manual strings (like banner collections field upload types)
 const isValidImageUrl = (url?: string) => {
   if (!url || typeof url !== "string") return false;
-  if (url.startsWith("/")) return true; // Relative paths like /placeholder.png are fine
+  if (url.startsWith("/")) return true;
   try {
     new URL(url);
     return true;
@@ -157,7 +158,7 @@ export default function EditCollectionPage({
         products: collectionProducts.map((p, index) => ({
           productId: p.id,
           order: index,
-        })),
+         })),
       };
 
       await apiClient.post(
@@ -324,7 +325,6 @@ export default function EditCollectionPage({
                 </label>
                 {formData.image ? (
                   <div className="relative w-full h-40 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 shadow-inner group">
-                    {/* 🚨 SAFE IMAGE PREVIEW */}
                     <Image
                       src={
                         isValidImageUrl(formData.image)
@@ -437,39 +437,39 @@ export default function EditCollectionPage({
                       No matches found for "{searchQuery}"
                     </div>
                   ) : (
-                    searchResults.map((p: any) => (
-                      <div
-                        key={p.id}
-                        onClick={() => handleAddProduct(p)}
-                        className="flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
-                      >
-                        <div className="w-14 h-14 flex-shrink-0 bg-gray-50 rounded-xl overflow-hidden relative border border-gray-100">
-                          {/* 🚨 SAFE SEARCH DROPDOWN IMAGE */}
-                          <Image
-                            src={
-                              isValidImageUrl(p.images?.[0])
-                                ? p.images[0]
-                                : "/placeholder.png"
-                            }
-                            fill
-                            alt=""
-                            className="object-cover"
-                            sizes="56px"
-                          />
+                    searchResults.map((p: any) => {
+                      // 🔥 RESOLVE: First image from full catalog search list
+                      const resolvedSearchImage = resolveFirstProductImage(p.images);
+                      
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => handleAddProduct(p)}
+                          className="flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
+                        >
+                          <div className="w-14 h-14 flex-shrink-0 bg-gray-50 rounded-xl overflow-hidden relative border border-gray-100">
+                            <Image
+                              src={resolvedSearchImage || "/placeholder.png"}
+                              fill
+                              alt=""
+                              className="object-cover"
+                              sizes="56px"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-black text-gray-900 truncate">
+                              {p.name || "Untitled"}
+                            </p>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                              ₹{p.price || 0}
+                            </p>
+                          </div>
+                          <button className="bg-gray-900 text-white text-[10px] font-black px-4 py-2 rounded-lg hover:bg-[#006044] transition-colors flex-shrink-0 uppercase">
+                            Add
+                          </button>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-black text-gray-900 truncate">
-                            {p.name || "Untitled"}
-                          </p>
-                          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                            ₹{p.price || 0}
-                          </p>
-                        </div>
-                        <button className="bg-gray-900 text-white text-[10px] font-black px-4 py-2 rounded-lg hover:bg-[#006044] transition-colors flex-shrink-0 uppercase">
-                          Add
-                        </button>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               )}
@@ -486,60 +486,60 @@ export default function EditCollectionPage({
                   </p>
                 </div>
               ) : (
-                collectionProducts.map((product, index) => (
-                  <div
-                    key={product.id}
-                    draggable
-                    onDragStart={() => (dragItem.current = index)}
-                    onDragEnter={() => (dragOverItem.current = index)}
-                    onDragEnd={handleSort}
-                    onDragOver={(e) => e.preventDefault()}
-                    className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-2xl shadow-sm hover:border-[#006044] transition-all group cursor-move active:scale-[0.99] active:shadow-md"
-                  >
-                    <div className="text-gray-300 group-hover:text-[#006044] transition-colors cursor-grab active:cursor-grabbing">
-                      <GripVertical className="w-5 h-5" />
-                    </div>
+                collectionProducts.map((product, index) => {
+                  // 🔥 RESOLVE: First image from active draggable item stack
+                  const resolvedRowImage = resolveFirstProductImage(product.images);
 
-                    <div className="w-14 h-14 bg-gray-50 rounded-xl relative overflow-hidden flex-shrink-0 border border-gray-100">
-                      {/* 🚨 SAFE DRAGGABLE PRODUCT IMAGE */}
-                      <Image
-                        src={
-                          isValidImageUrl(product.images?.[0])
-                            ? product.images[0]
-                            : "/placeholder.png"
-                        }
-                        fill
-                        alt=""
-                        className="object-cover"
-                      />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-gray-900 truncate text-sm">
-                        {product.name}
-                      </p>
-                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
-                        ID: {product.id.slice(-6)}
-                      </p>
-                    </div>
-
-                    <div className="text-right mr-4">
-                      <p className="font-black text-gray-900">
-                        ₹{product.price}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveProduct(product.id);
-                      }}
-                      className="p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                  return (
+                    <div
+                      key={product.id}
+                      draggable
+                      onDragStart={() => (dragItem.current = index)}
+                      onDragEnter={() => (dragOverItem.current = index)}
+                      onDragEnd={handleSort}
+                      onDragOver={(e) => e.preventDefault()}
+                      className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-2xl shadow-sm hover:border-[#006044] transition-all group cursor-move active:scale-[0.99] active:shadow-md"
                     >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))
+                      <div className="text-gray-300 group-hover:text-[#006044] transition-colors cursor-grab active:cursor-grabbing">
+                        <GripVertical className="w-5 h-5" />
+                      </div>
+
+                      <div className="w-14 h-14 bg-gray-50 rounded-xl relative overflow-hidden flex-shrink-0 border border-gray-100">
+                        <Image
+                          src={resolvedRowImage || "/placeholder.png"}
+                          fill
+                          alt=""
+                          className="object-cover"
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-gray-900 truncate text-sm">
+                          {product.name}
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
+                          ID: {product.id.slice(-6)}
+                        </p>
+                      </div>
+
+                      <div className="text-right mr-4">
+                        <p className="font-black text-gray-900">
+                          ₹{product.price}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveProduct(product.id);
+                        }}
+                        className="p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
