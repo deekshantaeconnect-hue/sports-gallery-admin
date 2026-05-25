@@ -5,6 +5,7 @@ import { OrderStatus } from "@/types/types";
 import apiClient from "@/lib/api-client";
 import CancelOrderModal from "../CancelOrderModal";
 import { Package, MapPin, Loader2, User, Phone, Mail } from "lucide-react";
+import { resolveFirstProductImage } from "@/shared/utils/media-normalization";
 
 const ORDER_TRANSITIONS: Record<string, OrderStatus[]> = {
   PENDING: [OrderStatus.PAID, OrderStatus.CANCELLED],
@@ -183,37 +184,43 @@ export default function OrderDetails({ order, onUpdate }: OrderDetailsProps) {
             </div>
             <div className="divide-y divide-gray-100">
               {order.items && Array.isArray(order.items) ? (
-                order.items.map((item: any) => (
-                  <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
-                    <div className="h-16 w-16 bg-white rounded-lg border border-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden p-1">
-                      {item?.product?.images?.[0] ? (
-                        <img
-                          src={item.product.images[0]}
-                          alt={item.product?.name || "product"}
-                          className="h-full w-full object-contain"
-                        />
-                      ) : (
-                        <Package className="text-gray-300" />
-                      )}
+                order.items.map((item: any) => {
+                
+                  // 🔥 RESOLVE: Run each item's product image array through the media helper 
+                  const itemImageUrl = resolveFirstProductImage(item?.product?.images);
+
+                  return (
+                    <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
+                      <div className="h-16 w-16 bg-white rounded-lg border border-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden p-1">
+                        {itemImageUrl ? (
+                          <img
+                            src={itemImageUrl}
+                            alt={item.product?.name || "product"}
+                            className="h-full w-full object-contain"
+                          />
+                        ) : (
+                          <Package className="text-gray-300" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">
+                          {item?.product?.name || "Product Unavailable"}
+                        </h4>
+                        <p className="text-sm text-gray-500">
+                          Unit Price: ₹{item?.price?.toLocaleString("en-IN") || 0}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">
+                          ₹{((item?.price || 0) * (item?.quantity || 1)).toLocaleString("en-IN")}
+                        </p>
+                        <p className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full inline-block mt-1">
+                          Qty: {item?.quantity || 1}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">
-                        {item?.product?.name || "Product Unavailable"}
-                      </h4>
-                      <p className="text-sm text-gray-500">
-                        Unit Price: ₹{item?.price?.toLocaleString("en-IN") || 0}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">
-                        ₹{((item?.price || 0) * (item?.quantity || 1)).toLocaleString("en-IN")}
-                      </p>
-                      <p className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full inline-block mt-1">
-                        Qty: {item?.quantity || 1}
-                      </p>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="p-4 text-center text-gray-500">No items found in this order.</div>
               )}

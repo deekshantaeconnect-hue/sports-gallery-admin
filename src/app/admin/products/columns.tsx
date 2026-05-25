@@ -6,7 +6,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { Edit3, Trash2, CheckCircle2, XCircle, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/admin/ui/Badge";
-
+import { resolveFirstProductImage } from "@/shared/utils/media-normalization"; // 🔥 Updated helper import
 // Export a factory function to inject the onDelete handler safely
 export const getProductColumns = (
   onDelete: (id: string) => void
@@ -36,12 +36,19 @@ export const getProductColumns = (
     header: "Product",
     cell: ({ row }) => {
       const p = row.original;
-      const imageUrl = p.images?.[0];
+      // 🔥 NEW STRATEGY: Parse your stringified database object to safely extract the structural URL
+     // 🔥 Extract both the URL and the explicit media type structural properties
+      const resolvedImageUrl= resolveFirstProductImage(p.images);
       return (
         <div className="flex items-center gap-3 min-w-[250px]">
           <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-200 shrink-0">
-            {imageUrl ? (
-              <img src={imageUrl} alt={p.name} className="w-full h-full object-cover" />
+            {resolvedImageUrl ? (
+              <img 
+                src={resolvedImageUrl} 
+                alt={p.name} 
+                className="w-full h-full object-cover" 
+                loading="lazy" 
+              />
             ) : (
               <ImageIcon className="w-5 h-5 text-gray-300" />
             )}

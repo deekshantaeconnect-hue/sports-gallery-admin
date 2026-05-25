@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ShoppingCart, Star } from "lucide-react";
+import { resolveFirstProductImage } from "@/shared/utils/media-normalization";
 
 interface ProductCardProps {
   product: {
@@ -33,12 +34,15 @@ export default function ProductCard({ product }: ProductCardProps) {
     ? product.category 
     : product.category?.name;
 
+    // 🔥 RESOLVE: Drop downstream native index operations and use the robust image helper block
+  const resolvedCardImageUrl = resolveFirstProductImage(product.images);
+
   return (
     <div className="group flex flex-col bg-white rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100 relative h-full">
       
       <Link href={`/product/${product.slug}`} className="relative aspect-[4/5] overflow-hidden bg-[#F7F7F7] block">
         <Image
-          src={product.images?.[0] || "/placeholder-product.png"}
+          src={resolvedCardImageUrl || "/placeholder-product.png"} // 🔥 Leverages clean helper string URL fallback loop
           alt={product.name || "Product"}
           fill
           className="object-cover object-center group-hover:scale-110 transition-transform duration-700 ease-in-out"

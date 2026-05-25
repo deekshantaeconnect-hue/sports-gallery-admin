@@ -1,17 +1,20 @@
 // src/components/admin/features/admin-products/components/sections/ProductForm.tsx
+"use client";
 
 import React, { useEffect, useRef } from "react";
-import { FormProvider, useController, Controller } from "react-hook-form"; // Added Controller
-import { ArrowLeft, Save, Loader2, Sparkles, Upload, X } from "lucide-react";
+import { FormProvider, useController, Controller } from "react-hook-form";
+import { ArrowLeft, Save, Loader2, Sparkles, Upload, X, Film } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CldUploadWidget } from "next-cloudinary";
 
 import APlusContentBuilder from "@/components/admin/APlusContentBuilder";
 import ProductHighlightsSelector from "@/components/admin/products/ProductHighlightsSelector";
 import { useProductForm } from "../../hooks/useProductForm";
-import { ProductFormValues } from "../../schemas/product.schema";
 import { ProductVariants } from "./ProductVariants";
 import { ProductExtraDetails } from "./ProductExtraDetails";
+import { ProductFormValues } from "../../schemas/product.schema";
+import { MediaItem } from "@/types/media";
+import { normalizeMediaCollection } from "@/shared/utils/media-normalization";
 
 interface ProductFormProps {
   initialData?: any;
@@ -19,8 +22,9 @@ interface ProductFormProps {
   stores: any[];
 }
 
-export  function ProductForm({ initialData, categories, stores }: ProductFormProps) {
+export function ProductForm({ initialData, categories, stores }: ProductFormProps) {
   const router = useRouter();
+  
   const { form, mutation, isEditing } = useProductForm(initialData);
 
   const { field: { value: images, onChange: setImages } } = useController({ 
@@ -28,24 +32,58 @@ export  function ProductForm({ initialData, categories, stores }: ProductFormPro
     control: form.control 
   });
 
-  // Synchronous tracker for multi-uploads
-  const latestImagesTracker = useRef<string[]>(images || []);
+  // Track state arrays for stable Cloudinary multi-uploads
+  const latestImagesTracker = useRef<MediaItem[]>(images || []);
 
   useEffect(() => {
     latestImagesTracker.current = images || [];
   }, [images]);
 
-  // Note: Manual setImages for hydration is no longer needed if using form.reset() 
-  // in useProductForm, but kept as a safeguard for current implementation.
+  // Safeguard hydration fallback: Parses stringified JSON and maps incoming image arrays
   useEffect(() => {
-    if (initialData?.images) setImages(initialData.images);
+    if (initialData?.images && Array.isArray(initialData.images)) {
+      const sanitizedMedia: MediaItem[] = initialData.images.map((img: any) => {
+        if (!img) return null;
+        
+        let target = img;
+        
+        // 🔥 CRITICAL FIX: If the data item is a JSON string, parse it first!
+        if (typeof img === "string") {
+          try {
+            if (img.trim().startsWith("{")) {
+              target = JSON.parse(img);
+            } else {
+              return { url: img, type: "image" as const };
+            }
+          } catch (e) {
+            console.error("Failed to parse image JSON string:", e);
+            return { url: img, type: "image" as const };
+          }
+        }
+        
+        return {
+          url: target.url || "",
+          publicId: target.publicId || null,
+          type: (target.type === "video" || target.type === "gif" ? target.type : "image") as any,
+          posterUrl: target.posterUrl || null,
+        };
+      }).filter((item :any): item is MediaItem => Boolean(item && item.url));
+      
+      setImages(sanitizedMedia);
+    }
   }, [initialData, setImages]);
+
+  // Safely normalize media collection for rendering previews
+  const normalizedMedia = normalizeMediaCollection(images || []);
 
   return (
     <div className="min-h-screen bg-white pb-24">
       <FormProvider {...form}>
         <form 
-          onSubmit={form.handleSubmit((data: ProductFormValues) => mutation.mutate(data))} 
+          onSubmit={form.handleSubmit(
+            (data: ProductFormValues) => mutation.mutate(data),
+            (errors) => console.log("🔥 ZOD VALIDATION FAILED:", errors)
+          )} 
           className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-10"
         >
           
@@ -68,9 +106,10 @@ export  function ProductForm({ initialData, categories, stores }: ProductFormPro
                 </p>
               </div>
             </div>
+            
             <button 
               type="submit" 
-              disabled={mutation.isPending || images.length === 0} 
+              disabled={mutation.isPending || !images || images.length === 0} 
               className="bg-indigo-600 text-white px-8 py-3.5 rounded-full font-black text-sm shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:bg-zinc-300 disabled:shadow-none"
             >
               {mutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
@@ -107,28 +146,82 @@ export  function ProductForm({ initialData, categories, stores }: ProductFormPro
               {/* Media Gallery */}
               <div className="bg-zinc-50 p-8 rounded-[40px] border border-zinc-100 space-y-4">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Image Gallery (Min 1) *</label>
+                  <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Media Gallery (Min 1) *</label>
                 </div>
+                
                 <div className="flex gap-4 flex-wrap">
-                  {images.map((url: string, i: number) => (
-                    <div key={i} className="relative h-32 w-32 rounded-3xl overflow-hidden border shadow-sm group">
-                      <img src={url} className="h-full w-full object-cover transition-transform group-hover:scale-110" alt={`upload-${i}`} />
+                  {normalizedMedia.map((media, i) => (
+                    <div key={i} className="relative h-32 w-32 rounded-3xl overflow-hidden border border-zinc-200 shadow-sm group bg-white">
+                      
+                      {/* Render Video Preview */}
+                      {media.type === "video" ? (
+                        <div className="h-full w-full relative bg-zinc-900 flex items-center justify-center">
+                          <video 
+                            src={media.url} 
+                            className="h-full w-full object-cover" 
+                            muted 
+                            playsInline
+                            loop
+                            onMouseEnter={(e) => e.currentTarget.play()}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.pause();
+                              e.currentTarget.currentTime = 0;
+                            }}
+                          />
+                          <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white p-1 rounded-md">
+                            <Film size={12} />
+                          </div>
+                        </div>
+                      ) : (
+                        /* Render Image/GIF Preview */
+                        <div className="h-full w-full relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img 
+                            src={media.url} 
+                            className="h-full w-full object-cover transition-transform group-hover:scale-110" 
+                            alt={`upload-${i}`} 
+                          />
+                          {media.type === "gif" && (
+                            <span className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                              GIF
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Remove Button */}
                       <button 
                         type="button" 
-                        onClick={() => setImages(images.filter((_, idx) => idx !== i))} 
-                        className="absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow-md hover:text-red-500 transition-colors"
+                        onClick={() => setImages((images || []).filter((_, idx) => idx !== i))} 
+                        className="absolute top-2 right-2 bg-white/90 rounded-full p-1.5 shadow-md hover:text-red-500 transition-colors z-10"
                       >
                         <X size={14} />
                       </button>
                     </div>
                   ))}
                   
+                  {/* Cloudinary Multi-Media Uploader */}
                   <CldUploadWidget 
                     uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET} 
-                    options={{ multiple: true }} 
+                    options={{ 
+                      multiple: true,
+                      resourceType: "auto",
+                      clientAllowedFormats: ["png", "jpg", "jpeg", "webp", "gif", "mp4", "mov", "webm"]
+                    }} 
                     onSuccess={(result: any) => { 
-                      if (result.event === "success") { 
-                        latestImagesTracker.current = [...latestImagesTracker.current, result.info.secure_url];
+                      if (result.event === "success" && result.info?.secure_url) { 
+                        let inferredType: "image" | "video" | "gif" = "image";
+                        if (result.info.resource_type === "video") inferredType = "video";
+                        if (result.info.format === "gif") inferredType = "gif";
+
+                        const newMediaObject: MediaItem = {
+                          url: result.info.secure_url,
+                          publicId: result.info.public_id || null,
+                          type: inferredType,
+                          posterUrl: result.info.thumbnail_url || null
+                        };
+
+                        latestImagesTracker.current = [...latestImagesTracker.current, newMediaObject];
                         setImages([...latestImagesTracker.current]); 
                       } 
                     }}
@@ -140,14 +233,14 @@ export  function ProductForm({ initialData, categories, stores }: ProductFormPro
                         className="h-32 w-32 border-2 border-dashed border-zinc-300 rounded-3xl flex flex-col items-center justify-center text-zinc-400 hover:border-[#006044] hover:bg-white transition-all bg-transparent"
                       >
                         <Upload size={28} />
-                        <span className="text-[10px] font-black mt-2 tracking-widest uppercase">Add Photos</span>
+                        <span className="text-[10px] font-black mt-2 tracking-widest uppercase">Add Media</span>
                       </button>
                     )}
                   </CldUploadWidget>
                 </div>
               </div>
 
-              {/* ✅ SERVICE HIGHLIGHTS (Fixed with Controller) */}
+              {/* SERVICE HIGHLIGHTS */}
               <div className="bg-zinc-50 p-8 rounded-[40px] border border-zinc-100 space-y-4">
                 <label className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
                   <Sparkles size={18} className="text-[#006044]" /> Service Highlights
@@ -159,10 +252,7 @@ export  function ProductForm({ initialData, categories, stores }: ProductFormPro
                     render={({ field: { value, onChange } }) => (
                       <ProductHighlightsSelector
                         selectedIds={value || []}
-                        onChange={(ids) => {
-                          console.log("[Controller] Updating highlightIds to:", ids);
-                          onChange(ids); // Forces immediate parent re-render and propagation to child
-                        }}
+                        onChange={(ids) => onChange(ids)}
                       />
                     )}
                   />
@@ -216,10 +306,11 @@ export  function ProductForm({ initialData, categories, stores }: ProductFormPro
               </div>
 
               <ProductVariants />
-              <ProductExtraDetails />
               
             </div>
           </div>
+          <ProductExtraDetails />
+
         </form>
       </FormProvider>
     </div>
