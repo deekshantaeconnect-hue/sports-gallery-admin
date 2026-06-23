@@ -8,15 +8,10 @@ import Link from 'next/link';
 import { 
   Search, 
   Filter, 
-  ChevronDown,
   Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Package,
   RefreshCw
 } from 'lucide-react';
-import { AdminOrdersService } from '@/services/admin-orders.service';
+import { AdminReturnsService } from '@/services/admin-returns.service'; // ✅ Changed import
 import { useDebounce } from '@/hooks/useDebounce';
 import { ReturnStatusBadge } from '@/components/admin/returns/ReturnStatusBadge';
 import { DataTable } from '@/components/admin/ui/DataTable';
@@ -40,21 +35,40 @@ export default function AdminReturnsPage() {
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['admin-returns', { page, search: debouncedSearch, status: statusFilter }],
-    queryFn: async () => {
-      const response = await AdminOrdersService.getReturns({
-        page,
-        limit: 20,
-        search: debouncedSearch,
-        status: statusFilter === 'ALL' ? undefined : statusFilter,
-      });
-      return response;
-    },
-  });
+  // app/admin/returns/page.tsx - Update the query
 
-  const returns = data?.data || [];
-  const meta = data?.meta || { totalPages: 1, total: 0 };
+const { data, isLoading, refetch } = useQuery({
+  queryKey: ['admin-returns', { page, search: debouncedSearch, status: statusFilter }],
+  queryFn: async () => {
+    console.log('[DEBUG] Fetching returns with params:', {
+      page,
+      limit: 20,
+      search: debouncedSearch || undefined,
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
+    });
+    
+    const response = await AdminReturnsService.getReturns({
+      page,
+      limit: 20,
+      search: debouncedSearch || undefined,
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
+    });
+    
+    console.log('[DEBUG] API Response from service:', response);
+    console.log('[DEBUG] Response data:', response?.data);
+    console.log('[DEBUG] Response data length:', response?.data?.length);
+    
+    return response;
+  },
+});
+
+// ✅ Use the data correctly
+const returns = data?.data || [];
+const meta = data?.meta || { totalPages: 1, total: 0 };
+
+// ✅ Add this debug log
+console.log('[DEBUG] Returns array:', returns);
+console.log('[DEBUG] Meta:', meta);
 
   const columns = [
     {

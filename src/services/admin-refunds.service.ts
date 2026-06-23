@@ -40,7 +40,7 @@ export const AdminRefundsService = {
 
     const url = `/admin/refunds${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const response = await apiClient.get(url);
-    return response.data;
+    return response.data; // ✅ Make sure this returns response.data
   },
 
   /**

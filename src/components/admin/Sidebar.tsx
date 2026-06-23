@@ -50,7 +50,8 @@ export const Sidebar = ({
       title: "Order Management",
       items: [
         { href: '/admin/orders', icon: ShoppingBag, label: "All Orders" },
-        { href: '/admin/refunds', icon: Undo2, label: "Refunds & Returns" },
+        { href: '/admin/refunds', icon: Undo2, label: "Refunds" },
+        { href: '/admin/returns', icon: Undo2, label: "Returns" },
         { href: '/admin/shipping', icon: Truck, label: "Shipping & Logistics" },
       ]
     },
