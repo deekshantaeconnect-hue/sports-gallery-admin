@@ -23,6 +23,8 @@ import {
   Ban,
   Truck,
   FileText,
+  PlayCircle,
+  Circle,
 } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { RefundStatusBadge } from '@/components/admin/refunds/RefundStatusBadge';
@@ -45,8 +47,21 @@ export default function AdminRefundDetailsPage({
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failureReason, setFailureReason] = useState('');
-  const [gatewayRefundId, setGatewayRefundId] = useState('');
+  const [showInitiateModal, setShowInitiateModal] = useState(false);
   const [showProcessModal, setShowProcessModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  
+  // Form states
+  const [refundMethod, setRefundMethod] = useState('GATEWAY');
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [manualTransactionId, setManualTransactionId] = useState('');
+  const [gatewayRefundId, setGatewayRefundId] = useState('');
+  const [gatewayTransactionId, setGatewayTransactionId] = useState('');
+  const [notes, setNotes] = useState('');
 
   const { data: refund, error, isLoading, mutate } = useSWR(
     refundId ? `/admin/refunds/${refundId}` : null,
@@ -61,20 +76,36 @@ export default function AdminRefundDetailsPage({
   }, [refund]);
 
   // Handle refund actions
-  const handleAction = async (action: string, data?: any) => {
+  const resetFormState = () => {
+    setRefundMethod('GATEWAY');
+    setAccountHolderName('');
+    setBankName('');
+    setAccountNumber('');
+    setIfscCode('');
+    setUpiId('');
+    setManualTransactionId('');
+    setGatewayRefundId('');
+    setGatewayTransactionId('');
+    setNotes('');
+    setFailureReason('');
+  };
+
+  const handleAction = async (
+    action: string,
+    data?: any,
+    closeModal?: () => void,
+  ) => {
     setIsActionLoading(true);
     try {
       await apiClient.patch(`/admin/refunds/${refundId}/${action}`, data || {});
       toast.success(`Refund ${action} successfully`);
       mutate();
+      closeModal?.();
+      resetFormState();
     } catch (error: any) {
       toast.error(error.response?.data?.message || `Failed to ${action} refund`);
     } finally {
       setIsActionLoading(false);
-      setShowProcessModal(false);
-      setShowFailureModal(false);
-      setGatewayRefundId('');
-      setFailureReason('');
     }
   };
 
@@ -122,7 +153,7 @@ export default function AdminRefundDetailsPage({
     refundReference,
     refundAmount,
     refundStatus,
-    refundMethod,
+    refundMethod: existingRefundMethod,
     order,
     return: returnData,
     initiatedAt,
@@ -139,13 +170,21 @@ export default function AdminRefundDetailsPage({
   // Determine available actions
   const getAvailableActions = () => {
     switch (refundStatus) {
-      case 'PENDING':
-      case 'APPROVED':
+      case 'NOT_STARTED':
+        return [
+          {
+            label: 'Initiate Refund',
+            action: () => setShowInitiateModal(true),
+            color: 'bg-blue-600 hover:bg-blue-700',
+            icon: <PlayCircle className="w-4 h-4 mr-2" />,
+          },
+        ];
+      case 'INITIATED':
         return [
           {
             label: 'Process Refund',
             action: () => setShowProcessModal(true),
-            color: 'bg-blue-600 hover:bg-blue-700',
+            color: 'bg-indigo-600 hover:bg-indigo-700',
             icon: <RefreshCw className="w-4 h-4 mr-2" />,
           },
           {
@@ -159,7 +198,7 @@ export default function AdminRefundDetailsPage({
         return [
           {
             label: 'Complete Refund',
-            action: () => handleAction('complete'),
+            action: () => setShowCompleteModal(true),
             color: 'bg-green-600 hover:bg-green-700',
             icon: <CheckCircle className="w-4 h-4 mr-2" />,
           },
@@ -183,13 +222,16 @@ export default function AdminRefundDetailsPage({
             label: 'Cancel Refund',
             action: () => {
               if (confirm('Are you sure you want to cancel this refund?')) {
-                handleAction('cancel');
+                handleAction('cancel', { reason: 'Cancelled by admin' });
               }
             },
             color: 'bg-gray-600 hover:bg-gray-700',
             icon: <Ban className="w-4 h-4 mr-2" />,
           },
         ];
+      case 'COMPLETED':
+      case 'CANCELLED':
+        return [];
       default:
         return [];
     }
@@ -199,8 +241,9 @@ export default function AdminRefundDetailsPage({
 
   // Timeline events
   const timelineEvents = [
-    { label: 'Refund Created', date: createdAt, icon: <Clock className="w-4 h-4" /> },
-    { label: 'Refund Initiated', date: initiatedAt, icon: <CreditCard className="w-4 h-4" /> },
+    { label: 'Return Closed', date: returnData?.closedAt, icon: <Clock className="w-4 h-4" /> },
+    { label: 'Refund Created', date: createdAt, icon: <Circle className="w-4 h-4" /> },
+    { label: 'Refund Initiated', date: initiatedAt, icon: <PlayCircle className="w-4 h-4" /> },
     { label: 'Refund Processing', date: processingAt, icon: <RefreshCw className="w-4 h-4" /> },
     { label: 'Refund Completed', date: completedAt, icon: <CheckCircle className="w-4 h-4" /> },
     { label: 'Refund Failed', date: existingFailureReason ? updatedAt : null, icon: <AlertCircle className="w-4 h-4" /> },
@@ -262,15 +305,19 @@ export default function AdminRefundDetailsPage({
                 <span className="text-gray-600">Amount</span>
                 <span className="font-bold text-lg text-blue-600 flex items-center gap-1">
                   <IndianRupee className="w-4 h-4" />
-                  {refundAmount.toFixed(2)}
+                  {refundAmount?.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Method</span>
                 <span className="font-medium text-gray-900 flex items-center gap-1">
                   <CreditCard className="w-4 h-4 text-gray-400" />
-                  {refundMethod || 'N/A'}
+                  {existingRefundMethod || 'N/A'}
                 </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Status</span>
+                <RefundStatusBadge status={refundStatus} size="sm" />
               </div>
               {existingGatewayRefundId && (
                 <div className="flex justify-between">
@@ -284,7 +331,7 @@ export default function AdminRefundDetailsPage({
                   <span className="font-medium text-gray-900">{processedBy}</span>
                 </div>
               )}
-              {failureRetryCount !== undefined && failureRetryCount > 0 && (
+              {(failureRetryCount ?? 0) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Retry Attempts</span>
                   <span className="font-medium text-red-600">{failureRetryCount}/3</span>
@@ -370,8 +417,9 @@ export default function AdminRefundDetailsPage({
                 <ul className="-mb-8">
                   {timelineEvents.map((event, index) => {
                     const isLast = index === timelineEvents.length - 1;
-                    const isActive = event.date && new Date(event.date) <= new Date();
-                    const isCompleted = event.label.includes('Completed') || event.label.includes('Created');
+                    const isCompleted = event.label.includes('Completed') || 
+                                       event.label.includes('Closed') ||
+                                       event.label.includes('Created');
 
                     return (
                       <li key={index} className="relative pb-8">
@@ -416,35 +464,233 @@ export default function AdminRefundDetailsPage({
             )}
           </div>
 
-          {/* Audit Log - Placeholder for future implementation */}
+          {/* Audit Log */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-gray-400" />
               Audit Log
             </h3>
-            <p className="text-sm text-gray-500 text-center py-4">
-              Audit log will be displayed here
-            </p>
+            {refund.auditHistory && refund.auditHistory.length > 0 ? (
+              <div className="space-y-2">
+                {refund.auditHistory.map((log: any, index: number) => (
+                  <div key={index} className="text-sm border-b border-gray-100 pb-2 last:border-0">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{log.action}</span>
+                      <span className="text-gray-500">{format(new Date(log.createdAt), 'MMM dd, h:mm a')}</span>
+                    </div>
+                    <div className="text-gray-500 text-xs">
+                      {log.previousStatus} → {log.newStatus}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No audit logs available
+              </p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Process Refund Modal */}
+      {/* ============================================ */}
+      {/* INITIATE REFUND MODAL */}
+      {/* ============================================ */}
+      {showInitiateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <PlayCircle className="w-5 h-5 text-blue-600" />
+              Initiate Refund
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter the refund details to initiate this refund.
+            </p>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Refund Method <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={refundMethod}
+                  onChange={(e) => setRefundMethod(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                >
+                  <option value="GATEWAY">Gateway (Automatic)</option>
+                  <option value="MANUAL_BANK">Manual Bank Transfer</option>
+                  <option value="UPI">UPI Transfer</option>
+                  <option value="WALLET">Store Wallet</option>
+                  <option value="COD_BANK">COD Bank Transfer</option>
+                </select>
+              </div>
+
+              {(refundMethod === 'MANUAL_BANK' || refundMethod === 'COD_BANK') && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Account Holder Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={accountHolderName}
+                      onChange={(e) => setAccountHolderName(e.target.value)}
+                      placeholder="Enter account holder name"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Bank Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      placeholder="Enter bank name"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Account Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value)}
+                      placeholder="Enter account number"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      IFSC Code <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={ifscCode}
+                      onChange={(e) => setIfscCode(e.target.value)}
+                      placeholder="Enter IFSC code"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              {refundMethod === 'UPI' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    UPI ID <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={upiId}
+                    onChange={(e) => setUpiId(e.target.value)}
+                    placeholder="Enter UPI ID (e.g., name@upi)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes <span className="text-gray-400">(optional)</span>
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add any notes about this refund..."
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowInitiateModal(false)}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const data: any = { refundMethod, notes };
+                  
+                  if (refundMethod === 'MANUAL_BANK' || refundMethod === 'COD_BANK') {
+                    if (!accountHolderName || !bankName || !accountNumber || !ifscCode) {
+                      toast.error('Please fill all bank details');
+                      return;
+                    }
+                    data.accountHolderName = accountHolderName;
+                    data.bankName = bankName;
+                    data.accountNumber = accountNumber;
+                    data.ifscCode = ifscCode;
+                  }
+                  
+                  if (refundMethod === 'UPI') {
+                    if (!upiId) {
+                      toast.error('Please enter UPI ID');
+                      return;
+                    }
+                    data.upiId = upiId;
+                  }
+                  
+                  handleAction('initiate', data, () => setShowInitiateModal(false));
+                }}
+                disabled={isActionLoading}
+                className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {isActionLoading ? 'Initiating...' : 'Initiate Refund'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* PROCESS REFUND MODAL */}
+      {/* ============================================ */}
       {showProcessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Process Refund</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-indigo-600" />
+              Process Refund
+            </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Enter the gateway refund ID to process this refund.
+              Enter the transaction details to process this refund.
             </p>
-            <input
-              type="text"
-              placeholder="Gateway Refund ID"
-              value={gatewayRefundId}
-              onChange={(e) => setGatewayRefundId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none mb-4"
-            />
-            <div className="flex gap-3">
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Manual Transaction ID <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={manualTransactionId}
+                  onChange={(e) => setManualTransactionId(e.target.value)}
+                  placeholder="Enter manual transaction ID"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes <span className="text-gray-400">(optional)</span>
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add any notes about this processing..."
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowProcessModal(false)}
                 className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -452,9 +698,9 @@ export default function AdminRefundDetailsPage({
                 Cancel
               </button>
               <button
-                onClick={() => handleAction('process', { gatewayRefundId })}
-                disabled={!gatewayRefundId || isActionLoading}
-                className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                onClick={() => handleAction('process', { manualTransactionId, notes }, () => setShowProcessModal(false))}
+                disabled={isActionLoading}
+                className="flex-1 px-4 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
               >
                 {isActionLoading ? 'Processing...' : 'Process Refund'}
               </button>
@@ -463,22 +709,130 @@ export default function AdminRefundDetailsPage({
         </div>
       )}
 
-      {/* Fail Refund Modal */}
+      {/* ============================================ */}
+      {/* COMPLETE REFUND MODAL */}
+      {/* ============================================ */}
+      {showCompleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Complete Refund
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter the completion details to finalize this refund.
+            </p>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Gateway Refund ID <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={gatewayRefundId}
+                  onChange={(e) => setGatewayRefundId(e.target.value)}
+                  placeholder="Enter gateway refund ID"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Gateway Transaction ID <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={gatewayTransactionId}
+                  onChange={(e) => setGatewayTransactionId(e.target.value)}
+                  placeholder="Enter gateway transaction ID"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Manual Transaction ID <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={manualTransactionId}
+                  onChange={(e) => setManualTransactionId(e.target.value)}
+                  placeholder="Enter manual transaction ID"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes <span className="text-gray-400">(optional)</span>
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add any notes about this completion..."
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCompleteModal(false)}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleAction(
+                  'complete',
+                  {
+                    gatewayRefundId,
+                    gatewayTransactionId,
+                    manualTransactionId,
+                    notes,
+                  },
+                  () => setShowCompleteModal(false),
+                )}
+                disabled={isActionLoading}
+                className="flex-1 px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                {isActionLoading ? 'Completing...' : 'Complete Refund'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* FAIL REFUND MODAL */}
+      {/* ============================================ */}
       {showFailureModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-red-600 mb-4">Fail Refund</h3>
+            <h3 className="text-lg font-bold text-red-600 mb-4 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              Fail Refund
+            </h3>
             <p className="text-sm text-gray-600 mb-4">
               Enter the reason why this refund failed.
             </p>
-            <textarea
-              placeholder="Failure reason (minimum 5 characters)"
-              value={failureReason}
-              onChange={(e) => setFailureReason(e.target.value)}
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none resize-none mb-4"
-            />
-            <div className="flex gap-3">
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Failure Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={failureReason}
+                onChange={(e) => setFailureReason(e.target.value)}
+                placeholder="Explain why the refund failed (minimum 5 characters)..."
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none resize-none"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {failureReason.length}/5 characters minimum
+              </p>
+            </div>
+
+            <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowFailureModal(false)}
                 className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -486,11 +840,11 @@ export default function AdminRefundDetailsPage({
                 Cancel
               </button>
               <button
-                onClick={() => handleAction('fail', { failureReason })}
+                onClick={() => handleAction('fail', { failureReason }, () => setShowFailureModal(false))}
                 disabled={failureReason.length < 5 || isActionLoading}
                 className="flex-1 px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {isActionLoading ? 'Processing...' : 'Fail Refund'}
+                {isActionLoading ? 'Failing...' : 'Fail Refund'}
               </button>
             </div>
           </div>

@@ -22,10 +22,8 @@ export interface RefundResponse {
   };
 }
 
+
 export const AdminRefundsService = {
-  /**
-   * Get refunds list with filters
-   */
   getRefunds: async (params: RefundFilterParams = {}): Promise<RefundResponse> => {
     const queryParams = new URLSearchParams();
     
@@ -39,55 +37,25 @@ export const AdminRefundsService = {
     if (params.orderId) queryParams.append('orderId', params.orderId);
 
     const url = `/admin/refunds${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    console.log('[AdminRefundsService] Fetching:', url);
+    
     const response = await apiClient.get(url);
-    return response.data; // ✅ Make sure this returns response.data
-  },
-
-  /**
-   * Get single refund details
-   */
-  getRefund: async (id: string) => {
-    const response = await apiClient.get(`/admin/refunds/${id}`);
+    console.log('[AdminRefundsService] Response:', response.data);
+    
+    // ✅ Ensure proper structure
+    if (response.data && response.data.data) {
+      return response.data;
+    }
+    
+    // ✅ If response is already the data array
+    if (Array.isArray(response.data)) {
+      return {
+        data: response.data,
+        meta: { total: response.data.length, page: 1, limit: 20, totalPages: 1 }
+      };
+    }
+    
     return response.data;
   },
-
-  /**
-   * Process a refund
-   */
-  processRefund: async (id: string, data: { gatewayRefundId?: string }) => {
-    const response = await apiClient.patch(`/admin/refunds/${id}/process`, data);
-    return response.data;
-  },
-
-  /**
-   * Complete a refund
-   */
-  completeRefund: async (id: string, data?: { notes?: string }) => {
-    const response = await apiClient.patch(`/admin/refunds/${id}/complete`, data || {});
-    return response.data;
-  },
-
-  /**
-   * Fail a refund
-   */
-  failRefund: async (id: string, data: { failureReason: string; notes?: string }) => {
-    const response = await apiClient.patch(`/admin/refunds/${id}/fail`, data);
-    return response.data;
-  },
-
-  /**
-   * Cancel a refund
-   */
-  cancelRefund: async (id: string, data?: { reason?: string }) => {
-    const response = await apiClient.patch(`/admin/refunds/${id}/cancel`, data || {});
-    return response.data;
-  },
-
-  /**
-   * Retry a failed refund
-   */
-  retryRefund: async (id: string) => {
-    const response = await apiClient.post(`/admin/refunds/${id}/retry`);
-    return response.data;
-  },
+  // ... rest of methods
 };

@@ -1,4 +1,3 @@
-// app/admin/returns/[id]/page.tsx
 'use client';
 
 import { use, useState } from 'react';
@@ -20,12 +19,25 @@ import {
   RefreshCw,
   Truck,
   CreditCard,
+  AlertCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import apiClient from '@/lib/api-client';
 import { ReturnStatusBadge } from '@/components/admin/returns/ReturnStatusBadge';
 import { RefundStatusBadge } from '@/components/admin/refunds/RefundStatusBadge';
 import { toast } from 'react-hot-toast';
+import { InspectReturnModal } from '@/components/admin/returns/InspectReturnModal';
+
+// ============================================
+// ENTERPRISE MODALS
+// ============================================
+import {
+  ApproveReturnModal,
+  RejectReturnModal,
+  SchedulePickupModal,
+  ReceiveReturnModal,
+  CloseReturnModal,
+} from '@/components/admin/returns/ReturnActionModals';
 
 const fetcher = async (url: string) => {
   const res = await apiClient.get(url);
@@ -40,21 +52,41 @@ export default function AdminReturnDetailsPage({
   const resolvedParams = use(params);
   const returnId = resolvedParams?.id;
 
-  const { data: returnData, error, isLoading, mutate } = useSWR(
-    returnId ? `/admin/returns/${returnId}` : null,
-    fetcher
-  );
+  // ============================================
+  // STATE MANAGEMENT
+  // ============================================
+  const {
+    data: returnData,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR(returnId ? `/admin/returns/${returnId}` : null, fetcher);
 
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [adminComment, setAdminComment] = useState('');
-  const [pickupDate, setPickupDate] = useState('');
 
-  const handleAction = async (action: string, data?: any) => {
+  // Modal States
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showSchedulePickupModal, setShowSchedulePickupModal] = useState(false);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [showInspectModal, setShowInspectModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+
+  const [inspectionItems, setInspectionItems] = useState<any[]>([]);
+
+  // ============================================
+  // ACTION HANDLERS
+  // ============================================
+  const handleAction = async (
+    action: string,
+    data?: any,
+    closeModal?: () => void,
+  ) => {
     setIsActionLoading(true);
     try {
       await apiClient.patch(`/admin/returns/${returnId}/${action}`, data);
       toast.success(`Return ${action} successfully`);
+      closeModal?.(); // Close modal
       mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.message || `Failed to ${action} return`);
@@ -63,6 +95,9 @@ export default function AdminReturnDetailsPage({
     }
   };
 
+  // ============================================
+  // LOADING & ERROR STATES
+  // ============================================
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -76,15 +111,26 @@ export default function AdminReturnDetailsPage({
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <XCircle className="h-12 w-12 text-red-500" />
         <h2 className="text-xl font-bold text-gray-900 mt-4">Failed to load return</h2>
+        <p className="text-sm text-gray-500 mt-2">The return could not be found or you don't have permission.</p>
+        <Link
+          href="/admin/returns"
+          className="mt-4 inline-flex items-center px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Returns
+        </Link>
       </div>
     );
   }
 
-  const { 
-    returnNumber, 
-    order, 
-    returnStatus, 
-    returnReason, 
+  // ============================================
+  // DATA DESTRUCTURING
+  // ============================================
+  const {
+    returnNumber,
+    order,
+    returnStatus,
+    returnReason,
     customerComment,
     adminComment: existingAdminComment,
     requestedAt,
@@ -98,11 +144,13 @@ export default function AdminReturnDetailsPage({
     closedAt,
     items,
     refunds,
-    customer
   } = returnData;
 
   const latestRefund = refunds?.[0];
 
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <div className="max-w-[1400px] mx-auto py-8 px-4 space-y-6">
       {/* Header */}
@@ -126,35 +174,24 @@ export default function AdminReturnDetailsPage({
         <ReturnStatusBadge status={returnStatus} />
       </div>
 
-      {/* Action Buttons */}
+      {/* ========================================== */}
+      {/* ACTION BUTTONS - ENTERPRISE GRADE */}
+      {/* ========================================== */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-3">
         {returnStatus === 'REQUESTED' && (
           <>
             <button
-              onClick={() => {
-                const comment = prompt('Add admin comment (optional):');
-                handleAction('approve', { 
-                  adminComment: comment || undefined,
-                  pickupScheduledAt: pickupDate || undefined 
-                });
-              }}
+              onClick={() => setShowApproveModal(true)}
               disabled={isActionLoading}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               Approve Return
             </button>
             <button
-              onClick={() => {
-                const reason = prompt('Enter rejection reason:');
-                if (reason && reason.length >= 5) {
-                  handleAction('reject', { rejectionReason: reason });
-                } else {
-                  toast.error('Rejection reason must be at least 5 characters');
-                }
-              }}
+              onClick={() => setShowRejectModal(true)}
               disabled={isActionLoading}
-              className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
             >
               <XCircle className="w-4 h-4 mr-2" />
               Reject Return
@@ -164,14 +201,9 @@ export default function AdminReturnDetailsPage({
 
         {returnStatus === 'APPROVED' && (
           <button
-            onClick={() => {
-              const date = prompt('Enter pickup date (YYYY-MM-DD):');
-              if (date) {
-                handleAction('schedule-pickup', { pickupDate: new Date(date).toISOString() });
-              }
-            }}
+            onClick={() => setShowSchedulePickupModal(true)}
             disabled={isActionLoading}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             <Truck className="w-4 h-4 mr-2" />
             Schedule Pickup
@@ -182,7 +214,7 @@ export default function AdminReturnDetailsPage({
           <button
             onClick={() => handleAction('complete-pickup')}
             disabled={isActionLoading}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             <CheckCircle className="w-4 h-4 mr-2" />
             Complete Pickup
@@ -191,12 +223,9 @@ export default function AdminReturnDetailsPage({
 
         {returnStatus === 'PICKUP_COMPLETED' && (
           <button
-            onClick={() => {
-              const comment = prompt('Add inspection notes:');
-              handleAction('receive', { adminComment: comment || undefined });
-            }}
+            onClick={() => setShowReceiveModal(true)}
             disabled={isActionLoading}
-            className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
           >
             <Package className="w-4 h-4 mr-2" />
             Receive & Inspect
@@ -204,14 +233,34 @@ export default function AdminReturnDetailsPage({
         )}
 
         {returnStatus === 'RECEIVED' && (
+          <>
+            <button
+              onClick={() => {
+                setInspectionItems(items || []);
+                setShowInspectModal(true);
+              }}
+              disabled={isActionLoading}
+              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Inspect Items
+            </button>
+            <button
+              onClick={() => setShowCloseModal(true)}
+              disabled={isActionLoading}
+              className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Close Return
+            </button>
+          </>
+        )}
+
+        {returnStatus === 'INSPECTED' && (
           <button
-            onClick={() => {
-              if (confirm('Close this return? This will mark it as completed.')) {
-                handleAction('close');
-              }
-            }}
+            onClick={() => setShowCloseModal(true)}
             disabled={isActionLoading}
-            className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             <CheckCircle className="w-4 h-4 mr-2" />
             Close Return
@@ -219,9 +268,12 @@ export default function AdminReturnDetailsPage({
         )}
       </div>
 
-      {/* Main Content */}
+      {/* ========================================== */}
+      {/* MAIN CONTENT - UNCHANGED */}
+      {/* ========================================== */}
+      {/* ... (keep your existing main content) ... */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column */}
+        {/* Left Column - Customer Info, Address, Refund Status */}
         <div className="space-y-6">
           {/* Customer Info */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -230,17 +282,17 @@ export default function AdminReturnDetailsPage({
               Customer
             </h3>
             <div className="space-y-2 text-sm">
-              <p className="font-medium text-gray-900">{customer?.name || 'N/A'}</p>
-              {customer?.email && (
+              <p className="font-medium text-gray-900">{order.user?.name || 'N/A'}</p>
+              {order.user?.email && (
                 <p className="flex items-center gap-2 text-gray-600">
                   <Mail className="w-4 h-4" />
-                  {customer.email}
+                  {order.user.email}
                 </p>
               )}
-              {customer?.phone && (
+              {order.user?.phone && (
                 <p className="flex items-center gap-2 text-gray-600">
                   <Phone className="w-4 h-4" />
-                  {customer.phone}
+                  {order.user.phone}
                 </p>
               )}
             </div>
@@ -281,7 +333,9 @@ export default function AdminReturnDetailsPage({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount</span>
-                  <span className="font-medium">₹{latestRefund.refundAmount.toFixed(2)}</span>
+                  <span className="font-medium">
+                    ₹{latestRefund.refundAmount.toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Method</span>
@@ -290,7 +344,9 @@ export default function AdminReturnDetailsPage({
                 {latestRefund.gatewayRefundId && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Gateway Ref</span>
-                    <span className="font-mono text-xs">{latestRefund.gatewayRefundId}</span>
+                    <span className="font-mono text-xs">
+                      {latestRefund.gatewayRefundId}
+                    </span>
                   </div>
                 )}
                 <Link
@@ -304,7 +360,7 @@ export default function AdminReturnDetailsPage({
           )}
         </div>
 
-        {/* Right Column */}
+        {/* Right Column - Return Details, Items, Timeline */}
         <div className="lg:col-span-2 space-y-6">
           {/* Return Details */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -360,8 +416,15 @@ export default function AdminReturnDetailsPage({
                   {item.images && item.images.length > 0 && (
                     <div className="flex gap-2">
                       {item.images.map((image: string, index: number) => (
-                        <div key={index} className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden">
-                          <img src={image} alt={`Item ${index}`} className="w-full h-full object-cover" />
+                        <div
+                          key={index}
+                          className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden"
+                        >
+                          <img
+                            src={image}
+                            alt={`Item ${index}`}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                       ))}
                     </div>
@@ -384,24 +447,96 @@ export default function AdminReturnDetailsPage({
                 { label: 'Received', date: receivedAt },
                 { label: 'Inspected', date: inspectedAt },
                 { label: 'Closed', date: closedAt },
-              ].filter((event) => event.date).map((event, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="mt-1">
-                    <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                    {index < 7 && <div className="w-0.5 h-8 bg-gray-200 ml-0.5"></div>}
+              ]
+                .filter((event) => event.date)
+                .map((event, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <div className="mt-1">
+                      <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                      {index < 7 && <div className="w-0.5 h-8 bg-gray-200 ml-0.5"></div>}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{event.label}</p>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(event.date!), 'MMM dd, yyyy h:mm a')}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{event.label}</p>
-                    <p className="text-sm text-gray-500">
-                      {format(new Date(event.date!), 'MMM dd, yyyy h:mm a')}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         </div>
       </div>
+
+      {/* ========================================== */}
+      {/* ENTERPRISE MODALS */}
+      {/* ========================================== */}
+
+      {/* Approve Modal */}
+      <ApproveReturnModal
+        isOpen={showApproveModal}
+        onClose={() => setShowApproveModal(false)}
+        onConfirm={(data:any) => handleAction('approve', data, () => setShowApproveModal(false))}
+        isLoading={isActionLoading}
+        returnId={returnId}
+      />
+
+      {/* Reject Modal */}
+      <RejectReturnModal
+        isOpen={showRejectModal}
+        onClose={() => setShowRejectModal(false)}
+        onConfirm={(data:any) => handleAction('reject', data,() => setShowRejectModal(false),)}
+        isLoading={isActionLoading}
+        returnId={returnId}
+      />
+
+      {/* Schedule Pickup Modal */}
+      <SchedulePickupModal
+        isOpen={showSchedulePickupModal}
+        onClose={() => setShowSchedulePickupModal(false)}
+        onConfirm={(data:any) => handleAction('schedule-pickup', data,() => setShowSchedulePickupModal(false),)}
+        isLoading={isActionLoading}
+        returnId={returnId}
+      />
+
+      {/* Receive Return Modal */}
+      <ReceiveReturnModal
+        isOpen={showReceiveModal}
+        onClose={() => setShowReceiveModal(false)}
+        onConfirm={(data:any) => handleAction('receive', data,() => setShowReceiveModal(false),)}
+        isLoading={isActionLoading}
+        returnId={returnId}
+        returnItems={items || []}
+      />
+
+      {/* Inspect Modal */}
+      {showInspectModal && (
+        <InspectReturnModal
+          isOpen={showInspectModal}
+          onClose={() => {
+            setShowInspectModal(false);
+            setInspectionItems([]);
+          }}
+          onConfirm={async (data:any) => {
+            await handleAction('inspect', data);
+            setShowInspectModal(false);
+            setInspectionItems([]);
+          }}
+          returnItems={inspectionItems}
+          isLoading={isActionLoading}
+          returnId={returnId}
+        />
+      )}
+
+      {/* Close Modal */}
+      <CloseReturnModal
+        isOpen={showCloseModal}
+        onClose={() => setShowCloseModal(false)}
+        onConfirm={() => handleAction('close', undefined, () => setShowCloseModal(false))}
+        isLoading={isActionLoading}
+        returnId={returnId}
+        returnStatus={returnStatus}
+      />
     </div>
   );
 }

@@ -7,7 +7,9 @@ import {
   XCircle, 
   RefreshCw, 
   AlertCircle,
-  Loader2 
+  Loader2,
+  PlayCircle,
+  Ban
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import apiClient from '@/lib/api-client';
@@ -40,17 +42,45 @@ export function RefundActionButtons({
     }
   };
 
-  const handleProcessRefund = () => {
-    const gatewayId = prompt('Enter gateway refund ID:');
-    if (gatewayId) {
-      handleAction('process', { gatewayRefundId: gatewayId });
+  const handleInitiateRefund = () => {
+    // Show modal for COD refund details
+    const refundMethod = prompt('Enter refund method (GATEWAY, MANUAL_BANK, UPI):');
+    if (!refundMethod) return;
+
+    if (refundMethod === 'MANUAL_BANK') {
+      const accountHolderName = prompt('Enter account holder name:');
+      const bankName = prompt('Enter bank name:');
+      const accountNumber = prompt('Enter account number:');
+      const ifscCode = prompt('Enter IFSC code:');
+      
+      if (accountHolderName && bankName && accountNumber && ifscCode) {
+        handleAction('initiate', { 
+          refundMethod,
+          accountHolderName,
+          bankName,
+          accountNumber,
+          ifscCode
+        });
+      }
+    } else if (refundMethod === 'UPI') {
+      const upiId = prompt('Enter UPI ID:');
+      if (upiId) {
+        handleAction('initiate', { refundMethod, upiId });
+      }
+    } else {
+      handleAction('initiate', { refundMethod });
     }
   };
 
+  const handleProcessRefund = () => {
+    const manualTransactionId = prompt('Enter manual transaction ID (optional):');
+    handleAction('process', { manualTransactionId });
+  };
+
   const handleCompleteRefund = () => {
-    if (confirm('Mark this refund as completed?')) {
-      handleAction('complete');
-    }
+    const gatewayRefundId = prompt('Enter gateway refund ID (optional):');
+    const manualTransactionId = prompt('Enter manual transaction ID (optional):');
+    handleAction('complete', { gatewayRefundId, manualTransactionId });
   };
 
   const handleFailRefund = () => {
@@ -64,13 +94,21 @@ export function RefundActionButtons({
 
   const getAvailableActions = () => {
     switch (currentStatus) {
-      case 'PENDING':
-      case 'APPROVED':
+      case 'NOT_STARTED':
+        return [
+          { 
+            label: 'Initiate Refund', 
+            action: handleInitiateRefund,
+            color: 'bg-blue-600 hover:bg-blue-700',
+            icon: <PlayCircle className="w-4 h-4 mr-2" />,
+          },
+        ];
+      case 'INITIATED':
         return [
           { 
             label: 'Process Refund', 
             action: handleProcessRefund,
-            color: 'bg-blue-600 hover:bg-blue-700',
+            color: 'bg-indigo-600 hover:bg-indigo-700',
             icon: <RefreshCw className="w-4 h-4 mr-2" />,
           },
           {
@@ -105,9 +143,13 @@ export function RefundActionButtons({
           },
           {
             label: 'Cancel Refund',
-            action: () => handleAction('cancel'),
+            action: () => {
+              if (confirm('Are you sure you want to cancel this refund?')) {
+                handleAction('cancel');
+              }
+            },
             color: 'bg-gray-600 hover:bg-gray-700',
-            icon: <XCircle className="w-4 h-4 mr-2" />,
+            icon: <Ban className="w-4 h-4 mr-2" />,
           },
         ];
       default:
