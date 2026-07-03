@@ -29,12 +29,12 @@ import { WhatsAppWidgetConfig } from "@/components/admin/sections/configs/WhatsA
 import { BlogSectionConfig } from "@/components/admin/sections/configs/BlogSectionConfig";
 import { CollectionsConfig } from "@/components/admin/sections/configs/CollectionsConfig";
 import { CategoryStripSettings } from "@/components/admin/sections/CategoryStripSettings";
-
-// Types
 import type {
   CategoryIconStripSettings,
   ThemeSection,
 } from "@/lib/validators/storefront";
+import { migrateCategoryIconStripSettings } from "@/lib/validators/storefront";
+
 import { FeaturedProductsConfig } from "@/components/admin/sections/configs/FeaturedProductsConfig";
 
 // ============================================================
@@ -134,7 +134,7 @@ export function SectionConfigPanel({ onUpdate }: SectionConfigPanelProps) {
     useStorefrontStore();
 
   const activeSection = sections.find((s) => s.id === activeSectionId);
-  
+
   const [localSettings, setLocalSettings] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -169,12 +169,10 @@ export function SectionConfigPanel({ onUpdate }: SectionConfigPanelProps) {
     queryKey: ["builder-collections", activeSection?.id],
     queryFn: async () => {
       try {
-        console.log("📡 Fetching collections...");
         const res: any = await apiClient.get(
           `/admin/collections?t=${Date.now()}`,
         );
         const data = Array.isArray(res) ? res : res?.data || [];
-        console.log(`✅ Fetched ${data.length} collections:`, data.slice(0, 3));
         return data;
       } catch (error) {
         console.error("❌ Failed to fetch collections:", error);
@@ -196,12 +194,10 @@ export function SectionConfigPanel({ onUpdate }: SectionConfigPanelProps) {
     queryKey: ["builder-categories", activeSection?.id],
     queryFn: async () => {
       try {
-        console.log("📡 Fetching categories...");
         const res: any = await apiClient.get(
           `/admin/categories?t=${Date.now()}`,
         );
         const data = Array.isArray(res) ? res : res?.data || [];
-        console.log(`✅ Fetched ${data.length} categories:`, data.slice(0, 3));
         return data;
       } catch (error) {
         console.error("❌ Failed to fetch categories:", error);
@@ -244,18 +240,13 @@ export function SectionConfigPanel({ onUpdate }: SectionConfigPanelProps) {
   const handleUpdate = useCallback(
     (settings: Record<string, any>) => {
       if (!activeSection) return;
-      
+
       setLocalSettings(settings);
       updateSectionSettings(activeSection.id, settings);
-      
+
       if (onUpdate) {
         onUpdate();
       }
-      
-      console.log("📝 Settings updated:", {
-        sectionId: activeSection.id,
-        settings,
-      });
     },
     [activeSection, updateSectionSettings, onUpdate],
   );
@@ -306,19 +297,27 @@ export function SectionConfigPanel({ onUpdate }: SectionConfigPanelProps) {
       _legacyCategoryIds: [],
     };
 
-    const currentSettings = localSettings || activeSection.settings || {};
-    const mergedSettings = { ...defaultSettings, ...currentSettings };
+    // ✅ ROOT CAUSE FIX:
+    // activeSection.settings (and localSettings, which mirrors it on mount)
+    // may still be in the legacy `categoryIds` shape. The storefront/preview
+    // renderer already runs saved settings through this migration — the edit
+    // panel must do the same, or it reads an empty `items` array while
+    // `categoryIds` sits unused. migrateCategoryIconStripSettings is
+    // idempotent: if `items` is already populated it returns settings as-is,
+    // so it's always safe to call here regardless of source.
+    const rawSettings = localSettings && Object.keys(localSettings).length > 0
+      ? localSettings
+      : activeSection.settings || {};
 
-    if (!mergedSettings.items || !Array.isArray(mergedSettings.items)) {
+    const migratedSettings = migrateCategoryIconStripSettings(rawSettings);
+
+    const mergedSettings = { ...defaultSettings, ...migratedSettings };
+
+    // Belt-and-suspenders: guarantee items is always a valid array by the
+    // time it reaches the edit panel, even if migration output is malformed.
+    if (!Array.isArray(mergedSettings.items)) {
       mergedSettings.items = [];
     }
-
-    // ✅ Log what we're passing
-    console.log("📦 CategoryStripSettings props:", {
-      categoriesCount: transformedCategories.length,
-      collectionsCount: transformedCollections.length,
-      itemsCount: mergedSettings.items?.length || 0,
-    });
 
     return (
       <div className="p-8 space-y-8 animate-in slide-in-from-right-4 duration-300 overflow-y-auto max-h-full">
@@ -340,7 +339,9 @@ export function SectionConfigPanel({ onUpdate }: SectionConfigPanelProps) {
               {transformedCollections.length} collections available
             </span>
             {isLoadingCategories || isLoadingCollections ? (
-              <span className="text-xs text-blue-500 animate-pulse">Loading...</span>
+              <span className="text-xs text-blue-500 animate-pulse">
+                Loading...
+              </span>
             ) : null}
           </div>
         </div>
@@ -350,7 +351,7 @@ export function SectionConfigPanel({ onUpdate }: SectionConfigPanelProps) {
           settings={mergedSettings}
           onUpdate={handleUpdate}
           categories={transformedCategories}
-          collections={transformedCollections} // ✅ PASS COLLECTIONS
+          collections={transformedCollections}
           isLoadingCategories={isLoadingCategories || isLoadingCollections}
           onRefreshPreview={onUpdate}
         />

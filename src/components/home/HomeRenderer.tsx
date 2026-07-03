@@ -145,15 +145,7 @@ const SECTION_REGISTRY: Record<string, SectionRegistryItem> = {
     displayName: "Category Icon Strip",
     dataResolver: (section, data) => {
       // ✅ FIX: Properly pass categories data
-      const categories = data?.categories || [];
-      
-      // Log for debugging
-      console.log("📦 CategoryIconStrip Data Resolver:", {
-        categoriesCount: categories.length,
-        categories: categories.slice(0, 3).map((c: any) => ({ id: c.id, name: c.name })),
-        sectionSettings: section.settings,
-      });
-      
+      const categories = data?.categories || [];      
       // Return the data with categories
       return {
         ...data,
@@ -313,16 +305,16 @@ export default function HomeRenderer({
   }, [config?.sectionsOrder]);
 
   // Log data for debugging
-  useMemo(() => {
-    if (previewMode) {
-      console.log("🏠 HomeRenderer Data:", {
-        categoriesCount: data?.categories?.length || 0,
-        collectionsCount: data?.collections?.length || 0,
-        sectionsCount: activeSections.length,
-        categoryStripSection: activeSections.find((s) => s.type === "CATEGORY_ICON_STRIP"),
-      });
-    }
-  }, [data, activeSections, previewMode]);
+  // useMemo(() => {
+  //   if (previewMode) {
+  //     console.log("🏠 HomeRenderer Data:", {
+  //       categoriesCount: data?.categories?.length || 0,
+  //       collectionsCount: data?.collections?.length || 0,
+  //       sectionsCount: activeSections.length,
+  //       categoryStripSection: activeSections.find((s) => s.type === "CATEGORY_ICON_STRIP"),
+  //     });
+  //   }
+  // }, [data, activeSections, previewMode]);
 
   // Memoize rendered sections
   const renderedSections = useMemo(() => {
