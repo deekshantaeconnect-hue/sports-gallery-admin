@@ -83,20 +83,13 @@ export default function StorefrontBuilderPage() {
   } = useQuery({
     queryKey: ["store-home-config"],
     queryFn: async () => {
-      logger.log("📡 Fetching homepage config...");
       const res = await adminService.getHomepageData();
       
       // Log the Category Icon Strip data
       const categoryStrip = res?.config?.sectionsOrder?.find(
         (s: any) => s.type === "CATEGORY_ICON_STRIP"
       );
-      if (categoryStrip) {
-        logger.log("📦 Category Strip Data:", {
-          itemsCount: categoryStrip.settings?.items?.length || 0,
-          items: categoryStrip.settings?.items || [],
-          legacy: categoryStrip.settings?._legacy || false,
-        });
-      }
+      
       
       return res;
     },
@@ -113,13 +106,11 @@ export default function StorefrontBuilderPage() {
   useEffect(() => {
     if (homeData && (homeData as any).config?.sectionsOrder) {
       const sections = (homeData as any).config.sectionsOrder;
-      logger.log("🔄 Hydrating sections from backend", { count: sections.length });
       
       // Find Category Icon Strip and log its items
       const categoryStrip = sections.find((s: any) => s.type === "CATEGORY_ICON_STRIP");
       if (categoryStrip) {
         const items = categoryStrip.settings?.items || [];
-        logger.log(`📦 Category Strip has ${items.length} items:`, items);
       }
       
       store.setInitialSections(sections);
@@ -175,19 +166,13 @@ export default function StorefrontBuilderPage() {
 
       // Log what we're saving
       const categoryStrip = sectionsToSave.find((s) => s.type === "CATEGORY_ICON_STRIP");
-      if (categoryStrip) {
-        logger.log("💾 Saving Category Strip:", {
-          itemsCount: categoryStrip.settings?.items?.length || 0,
-          items: categoryStrip.settings?.items || [],
-        });
-      }
+      
 
       return adminService.updateThemeConfig({
         sectionsOrder: sectionsToSave,
       });
     },
     onSuccess: async () => {
-      logger.log("✅ Layout saved successfully");
       
       // IMPORTANT: Force refetch from server
       toast.loading("Refreshing preview...", { id: "save-refresh" });
@@ -205,11 +190,7 @@ export default function StorefrontBuilderPage() {
         
         // Log the updated data
         const categoryStrip = sections.find((s: any) => s.type === "CATEGORY_ICON_STRIP");
-        if (categoryStrip) {
-          logger.log("📦 Updated Category Strip:", {
-            itemsCount: categoryStrip.settings?.items?.length || 0,
-          });
-        }
+       
       }
       
       store.resetDirty();

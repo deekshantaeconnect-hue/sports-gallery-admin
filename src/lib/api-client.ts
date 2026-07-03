@@ -6,6 +6,7 @@ import axios, {
 } from "axios";
 import { signOut } from "next-auth/react";
 import { useAuthStore } from "../store/authStore";
+import { BRAND } from "@/config/brand.config";
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
@@ -47,6 +48,8 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    config.headers["x-store-slug"] = BRAND.useStoreName;
+
     return config;
   },
   (error: AxiosError) => Promise.reject(error),
