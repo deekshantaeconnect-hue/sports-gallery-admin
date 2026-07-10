@@ -1,4 +1,4 @@
-// src\components\admin\Sidebar.tsx
+// src/components/admin/Sidebar.tsx
 
 "use client";
 
@@ -25,6 +25,7 @@ import {
   Truck,
   IndianRupee,
   RotateCcw,
+  Users, // ✅ ADDED: Users icon
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { BRAND } from "@/config/brand.config";
@@ -52,7 +53,11 @@ export const Sidebar = ({
   const navGroups = [
     {
       title: "Overview",
-      items: [{ href: "/admin", icon: LayoutDashboard, label: "Dashboard" }],
+      items: [
+        { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+        // ✅ ADDED: Users under Overview for quick access
+        { href: "/admin/users", icon: Users, label: "Users" },
+      ],
     },
     {
       title: "Order Management",
@@ -60,7 +65,6 @@ export const Sidebar = ({
         { href: "/admin/orders", icon: ShoppingBag, label: "All Orders" },
         { href: "/admin/refunds", icon: IndianRupee, label: "Refunds" },
         { href: "/admin/returns", icon: RotateCcw, label: "Returns" },
-        // { href: '/admin/shipping', icon: Truck, label: "Shipping & Logistics" },
       ],
     },
     {
