@@ -25,7 +25,8 @@ import {
   Truck,
   IndianRupee,
   RotateCcw,
-  Users, // ✅ ADDED: Users icon
+  Users,
+  ChartNoAxesCombined, // ✅ ADDED: Users icon
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { BRAND } from "@/config/brand.config";
@@ -88,7 +89,10 @@ export const Sidebar = ({
     },
     {
       title: "System",
-      items: [{ href: "/admin/config", icon: Settings, label: "Settings" }],
+      items: [
+        { href: "/admin/config", icon: Settings, label: "Settings" },
+        { href: "/admin/analytics", icon: ChartNoAxesCombined, label: "Analytics" },
+      ],
     },
   ];
 
