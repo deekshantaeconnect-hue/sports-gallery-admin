@@ -532,7 +532,7 @@ export default function AdminOrderDetailsPage({
                     const itemImageUrl = resolveFirstProductImage(
                       item?.product?.images,
                     );
-
+                    console.log(item, "----------item");
                     return (
                       <div
                         key={item.id}
@@ -553,6 +553,22 @@ export default function AdminOrderDetailsPage({
                           <h4 className="font-medium text-gray-900">
                             {item?.product?.name || "Product Unavailable"}
                           </h4>
+                          {item.variant && (
+                            <>
+                              <p className="text-sm text-blue-600 font-medium">
+                                {item.variant.name}
+                              </p>
+
+                              <p className="text-xs text-gray-500">
+                                {item.variant.optionType}:{" "}
+                                {item.variant.optionValue}
+                              </p>
+
+                              <p className="text-xs text-gray-400">
+                                SKU: {item.variant.sku}
+                              </p>
+                            </>
+                          )}
                           <p className="text-sm text-gray-500">
                             Unit Price: ₹
                             {item?.price?.toLocaleString("en-IN") || 0}
