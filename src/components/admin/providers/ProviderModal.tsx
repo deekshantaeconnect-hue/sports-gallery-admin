@@ -1,31 +1,23 @@
 // src\components\admin\providers\ProviderModal.tsx
 
+"use client";
 
-
-'use client';
-
-import React, { useState, useEffect } from 'react';
-import {
-  Eye,
-  EyeOff,
-  Save,
-  X,
-  Loader2,
-} from 'lucide-react';
-import toast from 'react-hot-toast';
-import { Switch } from '../ui/Switch';
+import React, { useState, useEffect } from "react";
+import { Eye, EyeOff, Save, X, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
+import { Switch } from "../ui/Switch";
 
 /* ---------------------- FIELD TYPES ---------------------- */
 
-const FIELD_TYPES: Record<string, 'string' | 'number' | 'boolean'> = {
-  port: 'number',
-  channel_id: 'number',
-  salt_index: 'number',
+const FIELD_TYPES: Record<string, "string" | "number" | "boolean"> = {
+  port: "number",
+  channel_id: "number",
+  salt_index: "number",
 
-  secure: 'boolean',
-  is_production: 'boolean',
-  show_estimation: 'boolean',
-  bypassProvider: 'boolean',
+  secure: "boolean",
+  is_production: "boolean",
+  show_estimation: "boolean",
+  bypassProvider: "boolean",
 };
 
 /* ---------------------- TYPES ---------------------- */
@@ -44,68 +36,68 @@ const PROVIDER_SCHEMAS: ProviderSchema = {
   EMAIL: {
     SMTP: [
       {
-        key: 'host',
-        placeholder: 'smtp.gmail.com',
-        note: 'SMTP server hostname from your email provider',
+        key: "host",
+        placeholder: "smtp.gmail.com",
+        note: "SMTP server hostname from your email provider",
       },
       {
-        key: 'port',
-        placeholder: '587',
-        note: 'Usually 587 (TLS) or 465 (SSL)',
+        key: "port",
+        placeholder: "587",
+        note: "Usually 587 (TLS) or 465 (SSL)",
       },
       {
-        key: 'secure',
-        placeholder: 'false',
-        note: 'Enable SSL connection',
+        key: "secure",
+        placeholder: "false",
+        note: "Enable SSL connection",
       },
       {
-        key: 'user',
-        placeholder: 'support@yourdomain.com',
-        note: 'SMTP login email',
+        key: "user",
+        placeholder: "support@yourdomain.com",
+        note: "SMTP login email",
       },
       {
-        key: 'password',
-        placeholder: 'Enter SMTP password',
-        note: 'Use app password if needed',
+        key: "password",
+        placeholder: "Enter SMTP password",
+        note: "Use app password if needed",
       },
       {
-        key: 'from',
-        placeholder: 'AE Naturals <support@aenaturals.com>',
-        note: 'Sender email shown to customers',
+        key: "from",
+        placeholder: "AE Naturals <support@aenaturals.com>",
+        note: "Sender email shown to customers",
       },
     ],
 
     AWS_SES: [
       {
-        key: 'accessKeyId',
-        placeholder: 'AKIA...',
-        note: 'AWS IAM access key',
+        key: "accessKeyId",
+        placeholder: "AKIA...",
+        note: "AWS IAM access key",
       },
       {
-        key: 'secretAccessKey',
-        placeholder: 'Enter AWS secret key',
-        note: 'Keep this private',
+        key: "secretAccessKey",
+        placeholder: "Enter AWS secret key",
+        note: "Keep this private",
       },
       {
-        key: 'region',
-        placeholder: 'ap-south-1',
-        note: 'AWS SES region',
+        key: "region",
+        placeholder: "ap-south-1",
+        note: "AWS SES region",
       },
       {
-        key: 'from',
-        placeholder: 'support@aenaturals.com',
+        key: "from",
+        placeholder: "support@aenaturals.com",
       },
     ],
 
     SENDGRID: [
       {
-        key: 'apiKey',
-        placeholder: 'SG.xxxxxx',
-        note: 'SendGrid API key',
+        key: "apiKey",
+        placeholder: "SG.xxxxxx",
+        note: "SendGrid API key",
       },
       {
-        key: 'from',
-        placeholder: 'support@aenaturals.com',
+        key: "from",
+        placeholder: "support@aenaturals.com",
       },
     ],
   },
@@ -113,54 +105,54 @@ const PROVIDER_SCHEMAS: ProviderSchema = {
   SMS: {
     FAST2SMS: [
       {
-        key: 'apiKey',
-        placeholder: 'Fast2SMS API key',
+        key: "apiKey",
+        placeholder: "Fast2SMS API key",
       },
     ],
 
     MSG91: [
       {
-        key: 'authKey',
-        placeholder: 'MSG91 auth key',
+        key: "authKey",
+        placeholder: "MSG91 auth key",
       },
       {
-        key: 'templateId',
-        placeholder: 'Template ID',
+        key: "templateId",
+        placeholder: "Template ID",
       },
       {
-        key: 'template_order_placed',
-        placeholder: 'Order placed template ID',
+        key: "template_order_placed",
+        placeholder: "Order placed template ID",
       },
       {
-        key: 'template_order_confirmed',
-        placeholder: 'Order confirmed template ID',
+        key: "template_order_confirmed",
+        placeholder: "Order confirmed template ID",
       },
       {
-        key: 'template_order_shipped',
-        placeholder: 'Order shipped template ID',
+        key: "template_order_shipped",
+        placeholder: "Order shipped template ID",
       },
       {
-        key: 'template_order_delivered',
-        placeholder: 'Order delivered template ID',
+        key: "template_order_delivered",
+        placeholder: "Order delivered template ID",
       },
       {
-        key: 'template_order_cancelled',
-        placeholder: 'Order cancelled template ID',
+        key: "template_order_cancelled",
+        placeholder: "Order cancelled template ID",
       },
     ],
 
     TWILIO: [
       {
-        key: 'accountSid',
-        placeholder: 'Twilio SID',
+        key: "accountSid",
+        placeholder: "Twilio SID",
       },
       {
-        key: 'authToken',
-        placeholder: 'Twilio auth token',
+        key: "authToken",
+        placeholder: "Twilio auth token",
       },
       {
-        key: 'fromNumber',
-        placeholder: '+91XXXXXXXXXX',
+        key: "fromNumber",
+        placeholder: "+91XXXXXXXXXX",
       },
     ],
   },
@@ -168,178 +160,178 @@ const PROVIDER_SCHEMAS: ProviderSchema = {
   PAYMENT: {
     RAZORPAY: [
       {
-        key: 'key_id',
-        placeholder: 'rzp_live_xxxxx',
+        key: "key_id",
+        placeholder: "rzp_live_xxxxx",
       },
       {
-        key: 'key_secret',
-        placeholder: 'Razorpay secret',
+        key: "key_secret",
+        placeholder: "Razorpay secret",
       },
     ],
 
     STRIPE: [
       {
-        key: 'public_key',
-        placeholder: 'pk_live_xxxxx',
+        key: "public_key",
+        placeholder: "pk_live_xxxxx",
       },
       {
-        key: 'secret_key',
-        placeholder: 'sk_live_xxxxx',
+        key: "secret_key",
+        placeholder: "sk_live_xxxxx",
       },
       {
-        key: 'webhook_secret',
-        placeholder: 'whsec_xxxxx',
+        key: "webhook_secret",
+        placeholder: "whsec_xxxxx",
       },
     ],
 
     PHONEPE: [
       {
-        key: 'merchant_id',
-        placeholder: 'Merchant ID',
+        key: "merchant_id",
+        placeholder: "Merchant ID",
       },
       {
-        key: 'salt_key',
-        placeholder: 'Salt key',
+        key: "salt_key",
+        placeholder: "Salt key",
       },
       {
-        key: 'salt_index',
-        placeholder: '1',
+        key: "salt_index",
+        placeholder: "1",
       },
       {
-        key: 'frontend_url',
-        placeholder: 'https://yourdomain.com',
+        key: "frontend_url",
+        placeholder: "https://yourdomain.com",
       },
       {
-        key: 'backend_webhook_url',
-        placeholder: 'https://api.yourdomain.com/webhook',
+        key: "backend_webhook_url",
+        placeholder: "https://api.yourdomain.com/webhook",
       },
       {
-        key: 'is_production',
-        note: 'Enable live mode',
+        key: "is_production",
+        note: "Enable live mode",
       },
     ],
 
     PAYU: [
-  {
-    key: "merchant_key",
-    placeholder: "Merchant key",
-    note: "Get this from your PayU Merchant Dashboard → Developer/API Keys.",
-  },
-  {
-    key: "merchant_salt",
-    placeholder: "Merchant salt",
-    note: "Secret salt provided by PayU for hash generation and response verification.",
-  },
-  {
-    key: "frontend_url",
-    placeholder: "https://yourdomain.com",
-    note: "Customer-facing website URL where users are redirected after payment success or failure.",
-  },
-  {
-  key: "backend_webhook_url",
-  placeholder: "https://api.yourdomain.com/api/v1",
-  note: "Example: http://yourdomain.com/api/v1. Public backend endpoint to receive PayU payment status callbacks.",
-},
-  {
-    key: "is_production",
-    placeholder: "Select option",
-    note: "Enable this only for live transactions. Keep disabled while testing in sandbox mode.",
-  },
-],
-CASHFREE: [
       {
-        key: 'app_id',
-        placeholder: 'Enter App ID',
-        note: 'Get this from your Cashfree Merchant Dashboard → Developers/API Keys.',
+        key: "merchant_key",
+        placeholder: "Merchant key",
+        note: "Get this from your PayU Merchant Dashboard → Developer/API Keys.",
       },
       {
-        key: 'secret_key',
-        placeholder: 'Enter Secret Key',
-        note: 'Secret key provided by Cashfree for API authentication.',
+        key: "merchant_salt",
+        placeholder: "Merchant salt",
+        note: "Secret salt provided by PayU for hash generation and response verification.",
       },
       {
-        key: 'env',
-        placeholder: 'sandbox or production',
+        key: "frontend_url",
+        placeholder: "https://yourdomain.com",
+        note: "Customer-facing website URL where users are redirected after payment success or failure.",
+      },
+      {
+        key: "backend_webhook_url",
+        placeholder: "https://api.yourdomain.com/api/v1",
+        note: "Example: http://yourdomain.com/api/v1. Public backend endpoint to receive PayU payment status callbacks.",
+      },
+      {
+        key: "is_production",
+        placeholder: "Select option",
+        note: "Enable this only for live transactions. Keep disabled while testing in sandbox mode.",
+      },
+    ],
+    CASHFREE: [
+      {
+        key: "app_id",
+        placeholder: "Enter App ID",
+        note: "Get this from your Cashfree Merchant Dashboard → Developers/API Keys.",
+      },
+      {
+        key: "secret_key",
+        placeholder: "Enter Secret Key",
+        note: "Secret key provided by Cashfree for API authentication.",
+      },
+      {
+        key: "env",
+        placeholder: "sandbox or production",
         note: 'Type "sandbox" for testing or "production" for live transactions.',
       },
       {
-        key: 'frontend_url',
-        placeholder: 'https://yourdomain.com',
-        note: 'Customer-facing website URL where users are redirected after payment.',
+        key: "frontend_url",
+        placeholder: "https://yourdomain.com",
+        note: "Customer-facing website URL where users are redirected after payment.",
       },
       {
-        key: 'backend_webhook_url',
-        placeholder: 'https://api.yourdomain.com/api/v1',
-        note: 'Public backend endpoint to receive Cashfree webhooks (e.g., https://api.yourdomain.com/api/v1).',
+        key: "backend_webhook_url",
+        placeholder: "https://api.yourdomain.com/api/v1",
+        note: "Public backend endpoint to receive Cashfree webhooks (e.g., https://api.yourdomain.com/api/v1).",
       },
     ],
   },
 
   SHIPPING: {
     SHIPROCKET: [
-  {
-    key: 'email',
-    placeholder: 'support@yourdomain.com',
-    note: 'Enter your Shiprocket registered email address used for API authentication and panel login.',
-  },
-  {
-    key: 'password',
-    placeholder: 'Shiprocket password',
-    note: 'Enter your Shiprocket account password. Used only for secure API token generation.',
-  },
-  {
-    key: 'token',
-    placeholder: 'Auth token',
-    note: 'Generate this token using Shiprocket API Login (POST /v1/external/auth/login) with your Shiprocket email and password. This token is required for Authorization: Bearer <token> requests.',
-  },
-  {
-    key: 'pickup_location',
-    placeholder: 'Warehouse Mumbai',
-    note: 'Enter the exact pickup location nickname configured inside your Shiprocket dashboard under Pickup Addresses.',
-  },
-  {
-    key: 'channel_id',
-    placeholder: '123456',
-    note: 'Enter your Shiprocket Sales Channel ID or Store ID used for order syncing and marketplace/store integration.',
-  },
-  {
-    key: 'show_estimation',
-    note: 'Enable this option to display estimated delivery dates and courier availability during checkout.',
-  },
-  {
-    key: 'preferred_courier_name',
-    placeholder: 'Delhivery',
-    note: 'Optional default courier partner to prioritize when customers do not manually choose a shipping provider.',
-  },
-  {
-  key: 'bypassProvider',
-  note: 'Disable Shiprocket APIs and use custom shipping rules.',
-},
-],
+      {
+        key: "email",
+        placeholder: "support@yourdomain.com",
+        note: "Enter your Shiprocket registered email address used for API authentication and panel login.",
+      },
+      {
+        key: "password",
+        placeholder: "Shiprocket password",
+        note: "Enter your Shiprocket account password. Used only for secure API token generation.",
+      },
+      {
+        key: "token",
+        placeholder: "Auth token",
+        note: "Generate this token using Shiprocket API Login (POST /v1/external/auth/login) with your Shiprocket email and password. This token is required for Authorization: Bearer <token> requests.",
+      },
+      {
+        key: "pickup_location",
+        placeholder: "Warehouse Mumbai",
+        note: "Enter the exact pickup location nickname configured inside your Shiprocket dashboard under Pickup Addresses.",
+      },
+      {
+        key: "channel_id",
+        placeholder: "123456",
+        note: "Enter your Shiprocket Sales Channel ID or Store ID used for order syncing and marketplace/store integration.",
+      },
+      {
+        key: "show_estimation",
+        note: "Enable this option to display estimated delivery dates and courier availability during checkout.",
+      },
+      {
+        key: "preferred_courier_name",
+        placeholder: "Delhivery",
+        note: "Optional default courier partner to prioritize when customers do not manually choose a shipping provider.",
+      },
+      {
+        key: "bypassProvider",
+        note: "Disable Shiprocket APIs and use custom shipping rules.",
+      },
+    ],
 
     DELHIVERY: [
       {
-        key: 'apiKey',
-        placeholder: 'Delhivery API key',
+        key: "apiKey",
+        placeholder: "Delhivery API key",
       },
       {
-        key: 'clientName',
-        placeholder: 'Business name',
+        key: "clientName",
+        placeholder: "Business name",
       },
     ],
 
     NIMBUSPOST: [
       {
-        key: 'email',
-        placeholder: 'support@yourdomain.com',
+        key: "email",
+        placeholder: "support@yourdomain.com",
       },
       {
-        key: 'password',
-        placeholder: 'Nimbuspost password',
+        key: "password",
+        placeholder: "Nimbuspost password",
       },
       {
-        key: 'token',
-        placeholder: 'Auth token',
+        key: "token",
+        placeholder: "Auth token",
       },
     ],
   },
@@ -360,31 +352,29 @@ export default function ProviderModal({
   initialData,
   activeType,
 }: Props) {
-  const [providerName, setProviderName] = useState('');
+  const [providerName, setProviderName] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [priority, setPriority] = useState(1);
   const [config, setConfig] = useState<Record<string, any>>({});
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
-const [shippingRules, setShippingRules] = useState<any[]>([
-  {
-    freeShippingAbove: 499,
-    flatShippingCharge: 100,
-    codExtraCharge: 50,
-    estimatedDays: "3-5 Days",
-  },
-]);
-  const availableProviders = Object.keys(
-    PROVIDER_SCHEMAS[activeType] || {}
-  );
+  const [shippingRules, setShippingRules] = useState<any[]>([
+    {
+      freeShippingAbove: 499,
+      flatShippingCharge: 100,
+      codExtraCharge: 50,
+      estimatedDays: "3-5 Days",
+    },
+  ]);
+  const availableProviders = Object.keys(PROVIDER_SCHEMAS[activeType] || {});
 
   const getEmptyConfig = (prov: string) => {
     return (PROVIDER_SCHEMAS[activeType]?.[prov] || []).reduce(
       (acc, field) => ({
         ...acc,
-        [field.key]: '',
+        [field.key]: "",
       }),
-      {}
+      {},
     );
   };
 
@@ -395,23 +385,27 @@ const [shippingRules, setShippingRules] = useState<any[]>([
         setIsActive(initialData.isActive);
         setPriority(initialData.priority);
         setConfig(initialData.config || {});
+
+        const defaultRules = [
+          {
+            freeShippingAbove: 499,
+            flatShippingCharge: 100,
+            codExtraCharge: 50,
+            estimatedDays: "3-5 Days",
+          },
+        ];
+
         setShippingRules(
-  initialData?.shippingRules || [
-    {
-      freeShippingAbove: 499,
-      flatShippingCharge: 100,
-      codExtraCharge: 50,
-      estimatedDays: "3-5 Days",
-    },
-  ]
-);
+          Array.isArray(initialData?.shippingRules)
+            ? initialData.shippingRules
+            : defaultRules,
+        );
       } else {
-        const defaultProv = availableProviders[0] || '';
+        const defaultProv = availableProviders[0] || "";
         setProviderName(defaultProv);
         setIsActive(true);
         setPriority(1);
         setConfig(defaultProv ? getEmptyConfig(defaultProv) : {});
-        
       }
 
       setShowSecrets({});
@@ -419,9 +413,7 @@ const [shippingRules, setShippingRules] = useState<any[]>([
     }
   }, [initialData, isOpen, activeType]);
 
-  const handleProviderChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newProv = e.target.value;
     setProviderName(newProv);
     setConfig(getEmptyConfig(newProv));
@@ -436,12 +428,10 @@ const [shippingRules, setShippingRules] = useState<any[]>([
       [key]: !prev[key],
     }));
 
-  const getFieldType = (key: string) =>
-    FIELD_TYPES[key] || 'string';
+  const getFieldType = (key: string) => FIELD_TYPES[key] || "string";
 
   const validateConfig = () => {
-    const schema =
-      PROVIDER_SCHEMAS[activeType]?.[providerName] || [];
+    const schema = PROVIDER_SCHEMAS[activeType]?.[providerName] || [];
 
     const errors: string[] = [];
 
@@ -450,16 +440,16 @@ const [shippingRules, setShippingRules] = useState<any[]>([
       const type = getFieldType(key);
       const value = config[key];
 
-      if (value === '' || value === undefined) {
+      if (value === "" || value === undefined) {
         errors.push(`${key} is required`);
         return;
       }
 
-      if (type === 'number' && isNaN(value)) {
+      if (type === "number" && isNaN(value)) {
         errors.push(`${key} must be a valid number`);
       }
 
-      if (type === 'boolean' && typeof value !== 'boolean') {
+      if (type === "boolean" && typeof value !== "boolean") {
         errors.push(`${key} must be true or false`);
       }
     });
@@ -490,21 +480,19 @@ const [shippingRules, setShippingRules] = useState<any[]>([
         priority,
         config,
 
-bypassProvider:
-  config.bypassProvider || false,
+        bypassProvider: config.bypassProvider || false,
 
-shippingRules:
-  config.bypassProvider
-    ? shippingRules
-    : [],
+        shippingRules: config.bypassProvider
+          ? Array.isArray(shippingRules)
+            ? shippingRules
+            : []
+          : [],
       });
 
-      toast.success('Provider configuration saved successfully!');
+      toast.success("Provider configuration saved successfully!");
       onClose();
     } catch (error: any) {
-      toast.error(
-        error?.message || 'Failed to save configuration.'
-      );
+      toast.error(error?.message || "Failed to save configuration.");
     } finally {
       setIsSaving(false);
     }
@@ -512,8 +500,7 @@ shippingRules:
 
   if (!isOpen) return null;
 
-  const currentSchema =
-    PROVIDER_SCHEMAS[activeType]?.[providerName] || [];
+  const currentSchema = PROVIDER_SCHEMAS[activeType]?.[providerName] || [];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
@@ -530,9 +517,7 @@ shippingRules:
         <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
           <div>
             <h3 className="text-lg font-bold text-gray-900">
-              {initialData
-                ? 'Edit Integration'
-                : 'New Integration'}
+              {initialData ? "Edit Integration" : "New Integration"}
             </h3>
             <p className="text-sm text-gray-500 mt-0.5">
               Configure API keys and connection settings.
@@ -558,27 +543,20 @@ shippingRules:
               className="w-full px-3 py-2 border rounded-lg"
             >
               {availableProviders.map((provider) => (
-                <option key={provider}>
-                  {provider}
-                </option>
+                <option key={provider}>{provider}</option>
               ))}
             </select>
 
             <input
               type="number"
               value={priority}
-              onChange={(e) =>
-                setPriority(Number(e.target.value))
-              }
+              onChange={(e) => setPriority(Number(e.target.value))}
               className="w-full px-3 py-2 border rounded-lg"
               placeholder="Priority"
             />
           </div>
 
-          <Switch
-            checked={isActive}
-            onChange={setIsActive}
-          />
+          <Switch checked={isActive} onChange={setIsActive} />
 
           {currentSchema.map((field) => {
             const key = field.key;
@@ -599,45 +577,38 @@ shippingRules:
                   </p>
                 )}
 
-                {type === 'boolean' ? (
+                {type === "boolean" ? (
                   <select
-                    value={value ?? ''}
+                    value={value ?? ""}
                     onChange={(e) =>
                       setConfig({
                         ...config,
-                        [key]:
-                          e.target.value === 'true',
+                        [key]: e.target.value === "true",
                       })
                     }
                     className="w-full px-3 py-2 border rounded-lg"
                   >
-                    <option value="">
-                      Select option
-                    </option>
-                    <option value="true">
-                      True
-                    </option>
-                    <option value="false">
-                      False
-                    </option>
+                    <option value="">Select option</option>
+                    <option value="true">True</option>
+                    <option value="false">False</option>
                   </select>
                 ) : (
                   <div className="relative">
                     <input
                       type={
-                        type === 'number'
-                          ? 'number'
+                        type === "number"
+                          ? "number"
                           : isSecret && !showValue
-                          ? 'password'
-                          : 'text'
+                            ? "password"
+                            : "text"
                       }
-                      value={value ?? ''}
+                      value={value ?? ""}
                       placeholder={field.placeholder}
                       onChange={(e) =>
                         setConfig({
                           ...config,
                           [key]:
-                            type === 'number'
+                            type === "number"
                               ? Number(e.target.value)
                               : e.target.value,
                         })
@@ -648,16 +619,10 @@ shippingRules:
                     {isSecret && (
                       <button
                         type="button"
-                        onClick={() =>
-                          toggleSecretView(key)
-                        }
+                        onClick={() => toggleSecretView(key)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
                       >
-                        {showValue ? (
-                          <EyeOff size={18} />
-                        ) : (
-                          <Eye size={18} />
-                        )}
+                        {showValue ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     )}
                   </div>
@@ -667,126 +632,126 @@ shippingRules:
           })}
 
           {activeType === "SHIPPING" && (
-  <div className="border rounded-2xl p-5 space-y-5 bg-orange-50/40">
+            <div className="border rounded-2xl p-5 space-y-5 bg-orange-50/40">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900">
+                    Bypass Shipping Provider
+                  </h3>
 
-    <div className="flex items-center justify-between">
-      <div>
-        <h3 className="font-semibold text-gray-900">
-          Bypass Shipping Provider
-        </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Disable Shiprocket and use custom rules engine.
+                  </p>
+                </div>
 
-        <p className="text-xs text-gray-500 mt-1">
-          Disable Shiprocket and use custom rules engine.
-        </p>
-      </div>
+                <Switch
+                  checked={config.bypassProvider || false}
+                  onChange={(value) =>
+                    setConfig({
+                      ...config,
+                      bypassProvider: value,
+                    })
+                  }
+                />
+              </div>
 
-      <Switch
-        checked={config.bypassProvider || false}
-        onChange={(value) =>
-          setConfig({
-            ...config,
-            bypassProvider: value,
-          })
-        }
-      />
-    </div>
+              {config.bypassProvider && (
+                <div className="space-y-4">
+                  {(Array.isArray(shippingRules) ? shippingRules : []).map(
+                    (rule, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-2 gap-4 border rounded-xl p-4 bg-white"
+                      >
+                        <div>
+                          <label className="text-xs font-medium text-gray-600">
+                            Free Shipping Above
+                          </label>
 
-    {config.bypassProvider && (
-      <div className="space-y-4">
+                          <input
+                            type="number"
+                            value={rule.freeShippingAbove}
+                            onChange={(e) => {
+                              const updated = [...shippingRules];
 
-        {shippingRules.map((rule, index) => (
-          <div
-            key={index}
-            className="grid grid-cols-2 gap-4 border rounded-xl p-4 bg-white"
-          >
+                              updated[index].freeShippingAbove = Number(
+                                e.target.value,
+                              );
 
-            <div>
-              <label className="text-xs font-medium text-gray-600">
-                Free Shipping Above
-              </label>
+                              setShippingRules(updated);
+                            }}
+                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                          />
+                        </div>
 
-              <input
-                type="number"
-                value={rule.freeShippingAbove}
-                onChange={(e) => {
-                  const updated = [...shippingRules];
+                        <div>
+                          <label className="text-xs font-medium text-gray-600">
+                            Flat Shipping Charge
+                          </label>
 
-                  updated[index].freeShippingAbove =
-                    Number(e.target.value);
+                          <input
+                            type="number"
+                            value={rule.flatShippingCharge}
+                            onChange={(e) => {
+                              const updated = [...shippingRules];
 
-                  setShippingRules(updated);
-                }}
-                className="w-full mt-1 px-3 py-2 border rounded-lg"
-              />
+                              updated[index].flatShippingCharge = Number(
+                                e.target.value,
+                              );
+
+                              setShippingRules(updated);
+                            }}
+                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-medium text-gray-600">
+                            COD Extra Charge
+                          </label>
+
+                          <input
+                            type="number"
+                            value={rule.codExtraCharge}
+                            onChange={(e) => {
+                              const updated = [...shippingRules];
+
+                              updated[index].codExtraCharge = Number(
+                                e.target.value,
+                              );
+
+                              setShippingRules(updated);
+                            }}
+                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-medium text-gray-600">
+                            Estimated Delivery
+                          </label>
+
+                          <input
+                            type="text"
+                            value={rule.estimatedDays}
+                            onChange={(e) => {
+                              const updated = [...shippingRules];
+
+                              updated[index].estimatedDays = e.target.value;
+
+                              setShippingRules(updated);
+                            }}
+                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                            placeholder="3-5 Days"
+                          />
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </div>
+              )}
             </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-600">
-                Flat Shipping Charge
-              </label>
-
-              <input
-                type="number"
-                value={rule.flatShippingCharge}
-                onChange={(e) => {
-                  const updated = [...shippingRules];
-
-                  updated[index].flatShippingCharge =
-                    Number(e.target.value);
-
-                  setShippingRules(updated);
-                }}
-                className="w-full mt-1 px-3 py-2 border rounded-lg"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-600">
-                COD Extra Charge
-              </label>
-
-              <input
-                type="number"
-                value={rule.codExtraCharge}
-                onChange={(e) => {
-                  const updated = [...shippingRules];
-
-                  updated[index].codExtraCharge =
-                    Number(e.target.value);
-
-                  setShippingRules(updated);
-                }}
-                className="w-full mt-1 px-3 py-2 border rounded-lg"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-600">
-                Estimated Delivery
-              </label>
-
-              <input
-                type="text"
-                value={rule.estimatedDays}
-                onChange={(e) => {
-                  const updated = [...shippingRules];
-
-                  updated[index].estimatedDays =
-                    e.target.value;
-
-                  setShippingRules(updated);
-                }}
-                className="w-full mt-1 px-3 py-2 border rounded-lg"
-                placeholder="3-5 Days"
-              />
-            </div>
-
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-)}
+          )}
         </div>
 
         {/* FOOTER */}
@@ -807,10 +772,7 @@ shippingRules:
           >
             {isSaving ? (
               <>
-                <Loader2
-                  size={16}
-                  className="animate-spin"
-                />
+                <Loader2 size={16} className="animate-spin" />
                 Saving...
               </>
             ) : (
