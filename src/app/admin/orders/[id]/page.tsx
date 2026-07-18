@@ -532,7 +532,6 @@ export default function AdminOrderDetailsPage({
                     const itemImageUrl = resolveFirstProductImage(
                       item?.product?.images,
                     );
-                    console.log(item, "----------item");
                     return (
                       <div
                         key={item.id}

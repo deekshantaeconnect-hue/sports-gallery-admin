@@ -30,6 +30,13 @@ type FieldConfig = {
 
 type ProviderSchema = Record<string, Record<string, FieldConfig[]>>;
 
+export interface ShippingRule {
+  freeShippingAbove: number;
+  flatShippingCharge: number;
+  codExtraCharge: number;
+  estimatedDays: string;
+}
+
 /* ---------------------- SCHEMA ---------------------- */
 
 const PROVIDER_SCHEMAS: ProviderSchema = {
@@ -166,6 +173,10 @@ const PROVIDER_SCHEMAS: ProviderSchema = {
       {
         key: "key_secret",
         placeholder: "Razorpay secret",
+      },
+      {
+        key: "frontend_url",
+        placeholder: "Frontend Url",
       },
     ],
 
@@ -358,7 +369,7 @@ export default function ProviderModal({
   const [config, setConfig] = useState<Record<string, any>>({});
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [shippingRules, setShippingRules] = useState<any[]>([
+  const [shippingRules, setShippingRules] = useState<ShippingRule[]>([
     {
       freeShippingAbove: 499,
       flatShippingCharge: 100,
@@ -386,7 +397,7 @@ export default function ProviderModal({
         setPriority(initialData.priority);
         setConfig(initialData.config || {});
 
-        const defaultRules = [
+        const defaultRules: ShippingRule[] = [
           {
             freeShippingAbove: 499,
             flatShippingCharge: 100,
@@ -396,7 +407,8 @@ export default function ProviderModal({
         ];
 
         setShippingRules(
-          Array.isArray(initialData?.shippingRules)
+          Array.isArray(initialData?.shippingRules) &&
+            initialData.shippingRules.length > 0
             ? initialData.shippingRules
             : defaultRules,
         );
@@ -435,24 +447,26 @@ export default function ProviderModal({
 
     const errors: string[] = [];
 
-    schema.forEach((field) => {
-      const key = field.key;
-      const type = getFieldType(key);
-      const value = config[key];
+    schema
+      .filter((field) => field.key !== "bypassProvider")
+      .forEach((field) => {
+        const key = field.key;
+        const type = getFieldType(key);
+        const value = config[key];
 
-      if (value === "" || value === undefined) {
-        errors.push(`${key} is required`);
-        return;
-      }
+        if (value === "" || value === undefined) {
+          errors.push(`${key} is required`);
+          return;
+        }
 
-      if (type === "number" && isNaN(value)) {
-        errors.push(`${key} must be a valid number`);
-      }
+        if (type === "number" && isNaN(value)) {
+          errors.push(`${key} must be a valid number`);
+        }
 
-      if (type === "boolean" && typeof value !== "boolean") {
-        errors.push(`${key} must be true or false`);
-      }
-    });
+        if (type === "boolean" && typeof value !== "boolean") {
+          errors.push(`${key} must be true or false`);
+        }
+      });
 
     return errors;
   };
@@ -472,6 +486,8 @@ export default function ProviderModal({
     try {
       setIsSaving(true);
 
+      const normalizedRules = Array.isArray(shippingRules) ? shippingRules : [];
+
       await onSave({
         id: initialData?.id,
         type: activeType,
@@ -479,14 +495,8 @@ export default function ProviderModal({
         isActive,
         priority,
         config,
-
         bypassProvider: config.bypassProvider || false,
-
-        shippingRules: config.bypassProvider
-          ? Array.isArray(shippingRules)
-            ? shippingRules
-            : []
-          : [],
+        shippingRules: config.bypassProvider ? normalizedRules : [],
       });
 
       toast.success("Provider configuration saved successfully!");
@@ -501,6 +511,7 @@ export default function ProviderModal({
   if (!isOpen) return null;
 
   const currentSchema = PROVIDER_SCHEMAS[activeType]?.[providerName] || [];
+  const normalizedRules = Array.isArray(shippingRules) ? shippingRules : [];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
@@ -558,78 +569,80 @@ export default function ProviderModal({
 
           <Switch checked={isActive} onChange={setIsActive} />
 
-          {currentSchema.map((field) => {
-            const key = field.key;
-            const type = getFieldType(key);
-            const value = config[key];
-            const isSecret = isSecretField(key);
-            const showValue = showSecrets[key];
+          {currentSchema
+            .filter((field) => field.key !== "bypassProvider")
+            .map((field) => {
+              const key = field.key;
+              const type = getFieldType(key);
+              const value = config[key];
+              const isSecret = isSecretField(key);
+              const showValue = showSecrets[key];
 
-            return (
-              <div key={key}>
-                <label className="text-sm font-medium text-gray-900">
-                  {key}
-                </label>
+              return (
+                <div key={key}>
+                  <label className="text-sm font-medium text-gray-900">
+                    {key}
+                  </label>
 
-                {field.note && (
-                  <p className="text-xs text-gray-500 mt-1 mb-2">
-                    {field.note}
-                  </p>
-                )}
+                  {field.note && (
+                    <p className="text-xs text-gray-500 mt-1 mb-2">
+                      {field.note}
+                    </p>
+                  )}
 
-                {type === "boolean" ? (
-                  <select
-                    value={value ?? ""}
-                    onChange={(e) =>
-                      setConfig({
-                        ...config,
-                        [key]: e.target.value === "true",
-                      })
-                    }
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select option</option>
-                    <option value="true">True</option>
-                    <option value="false">False</option>
-                  </select>
-                ) : (
-                  <div className="relative">
-                    <input
-                      type={
-                        type === "number"
-                          ? "number"
-                          : isSecret && !showValue
-                            ? "password"
-                            : "text"
-                      }
+                  {type === "boolean" ? (
+                    <select
                       value={value ?? ""}
-                      placeholder={field.placeholder}
                       onChange={(e) =>
                         setConfig({
                           ...config,
-                          [key]:
-                            type === "number"
-                              ? Number(e.target.value)
-                              : e.target.value,
+                          [key]: e.target.value === "true",
                         })
                       }
-                      className="w-full px-3 py-2 border rounded-lg pr-12"
-                    />
+                      className="w-full px-3 py-2 border rounded-lg"
+                    >
+                      <option value="">Select option</option>
+                      <option value="true">True</option>
+                      <option value="false">False</option>
+                    </select>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type={
+                          type === "number"
+                            ? "number"
+                            : isSecret && !showValue
+                              ? "password"
+                              : "text"
+                        }
+                        value={value ?? ""}
+                        placeholder={field.placeholder}
+                        onChange={(e) =>
+                          setConfig({
+                            ...config,
+                            [key]:
+                              type === "number"
+                                ? Number(e.target.value)
+                                : e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border rounded-lg pr-12"
+                      />
 
-                    {isSecret && (
-                      <button
-                        type="button"
-                        onClick={() => toggleSecretView(key)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
-                      >
-                        {showValue ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                      {isSecret && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSecretView(key)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                        >
+                          {showValue ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
           {activeType === "SHIPPING" && (
             <div className="border rounded-2xl p-5 space-y-5 bg-orange-50/40">
@@ -640,7 +653,7 @@ export default function ProviderModal({
                   </h3>
 
                   <p className="text-xs text-gray-500 mt-1">
-                    Disable Shiprocket and use custom rules engine.
+                    Disable Shiprocket APIs and use custom shipping rules.
                   </p>
                 </div>
 
@@ -657,27 +670,46 @@ export default function ProviderModal({
 
               {config.bypassProvider && (
                 <div className="space-y-4">
-                  {(Array.isArray(shippingRules) ? shippingRules : []).map(
-                    (rule, index) => (
-                      <div
-                        key={index}
-                        className="grid grid-cols-2 gap-4 border rounded-xl p-4 bg-white"
-                      >
+                  <h4 className="text-sm font-semibold text-gray-800">
+                    Shipping Rules
+                  </h4>
+                  {normalizedRules.map((rule, index) => (
+                    <div
+                      key={index}
+                      className="border rounded-xl p-4 bg-white shadow-sm space-y-4"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-sm text-gray-700">
+                          Rule #{index + 1}
+                        </span>
+                        {normalizedRules.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...normalizedRules];
+                              updated.splice(index, 1);
+                              setShippingRules(updated);
+                            }}
+                            className="text-xs text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Delete Rule
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="text-xs font-medium text-gray-600">
                             Free Shipping Above
                           </label>
-
                           <input
                             type="number"
                             value={rule.freeShippingAbove}
                             onChange={(e) => {
-                              const updated = [...shippingRules];
-
+                              const updated = [...normalizedRules];
                               updated[index].freeShippingAbove = Number(
                                 e.target.value,
                               );
-
                               setShippingRules(updated);
                             }}
                             className="w-full mt-1 px-3 py-2 border rounded-lg"
@@ -688,17 +720,14 @@ export default function ProviderModal({
                           <label className="text-xs font-medium text-gray-600">
                             Flat Shipping Charge
                           </label>
-
                           <input
                             type="number"
                             value={rule.flatShippingCharge}
                             onChange={(e) => {
-                              const updated = [...shippingRules];
-
+                              const updated = [...normalizedRules];
                               updated[index].flatShippingCharge = Number(
                                 e.target.value,
                               );
-
                               setShippingRules(updated);
                             }}
                             className="w-full mt-1 px-3 py-2 border rounded-lg"
@@ -709,17 +738,14 @@ export default function ProviderModal({
                           <label className="text-xs font-medium text-gray-600">
                             COD Extra Charge
                           </label>
-
                           <input
                             type="number"
                             value={rule.codExtraCharge}
                             onChange={(e) => {
-                              const updated = [...shippingRules];
-
+                              const updated = [...normalizedRules];
                               updated[index].codExtraCharge = Number(
                                 e.target.value,
                               );
-
                               setShippingRules(updated);
                             }}
                             className="w-full mt-1 px-3 py-2 border rounded-lg"
@@ -730,15 +756,12 @@ export default function ProviderModal({
                           <label className="text-xs font-medium text-gray-600">
                             Estimated Delivery
                           </label>
-
                           <input
                             type="text"
                             value={rule.estimatedDays}
                             onChange={(e) => {
-                              const updated = [...shippingRules];
-
+                              const updated = [...normalizedRules];
                               updated[index].estimatedDays = e.target.value;
-
                               setShippingRules(updated);
                             }}
                             className="w-full mt-1 px-3 py-2 border rounded-lg"
@@ -746,8 +769,26 @@ export default function ProviderModal({
                           />
                         </div>
                       </div>
-                    ),
-                  )}
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShippingRules([
+                        ...normalizedRules,
+                        {
+                          freeShippingAbove: 0,
+                          flatShippingCharge: 0,
+                          codExtraCharge: 0,
+                          estimatedDays: "",
+                        },
+                      ])
+                    }
+                    className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    + Add Shipping Rule
+                  </button>
                 </div>
               )}
             </div>
