@@ -320,6 +320,24 @@ const PROVIDER_SCHEMAS: ProviderSchema = {
       },
     ],
 
+    STORE_PICKUP: [
+      {
+        key: "store_address",
+        placeholder: "Global village front gate, 39/4, behind Global Academy For Learning, Pattanagere, Rajarajeshwari Nagar, Bengaluru, Karnataka - 560059",
+        note: "Store pickup address shown to customers during checkout.",
+      },
+      {
+        key: "pickup_hours",
+        placeholder: "Mon-Sat: 10:00 AM - 8:00 PM",
+        note: "Available store pickup operating hours.",
+      },
+      {
+        key: "pickup_instructions",
+        placeholder: "Bring order confirmation email and a valid photo ID.",
+        note: "Special instructions for order pickup.",
+      },
+    ],
+
     DELHIVERY: [
       {
         key: "apiKey",
