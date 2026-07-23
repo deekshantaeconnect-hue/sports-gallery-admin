@@ -55,7 +55,9 @@ export default function DispatchOrderModal({ order, isOpen, onClose, onSuccess }
 
         <div className="space-y-4 my-6">
           <p className="text-sm text-gray-600">
-            This will push the order details to Shiprocket, assign an AWB, and mark the order as <strong>SHIPPED</strong>.
+            {order.courierPartnerId === 'STORE_PICKUP' || order.courierId === 'STORE_PICKUP'
+              ? 'This will process the order for Store Pickup, mark it as Ready for Pickup with ₹0 shipping fee, and update customer status.'
+              : 'This will push the order details to Shiprocket, assign an AWB, and mark the order as SHIPPED.'}
           </p>
 
           {/* Locked Courier Display */}
