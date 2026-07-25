@@ -1,22 +1,65 @@
 // src/app/admin/login/page.tsx
+
 'use client';
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
 
-  const handleLogin = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    
+    // Validation
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
     try {
       setLoading(true);
-      await signIn("google", { callbackUrl: "/admin" });
+      const result = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+        callbackUrl: "/admin",
+      });
+
+      if (result?.error) {
+        setError('Invalid email or password');
+        setLoading(false);
+        return;
+      }
+
+      // Successful login
+      router.push("/admin");
+      router.refresh();
     } catch (err) {
       console.error(err);
+      setError('An error occurred during login');
       setLoading(false);
     }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+    // Clear error when user types
+    if (error) setError(null);
   };
 
   return (
@@ -41,7 +84,7 @@ export default function LoginPage() {
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md rounded-3xl">
             <Loader2 className="h-8 w-8 animate-spin text-zinc-700 dark:text-zinc-200" />
             <p className="text-sm mt-3 text-zinc-600 dark:text-zinc-300">
-              Redirecting to Google...
+              Signing in...
             </p>
           </div>
         )}
@@ -60,22 +103,78 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Google Button */}
-        <button
-          onClick={handleLogin}
-          disabled={loading}
-          className="group flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 py-3 text-sm font-medium shadow-sm transition-all duration-200 hover:shadow-md hover:bg-zinc-50 dark:hover:bg-zinc-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-green-500"
-        >
-          {/* Google SVG */}
-          <svg className="h-5 w-5" viewBox="0 0 48 48">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.04 1.53 7.42 2.82l5.48-5.48C33.36 3.53 29.06 2 24 2 14.82 2 6.88 7.98 3.24 16.44l6.38 4.96C11.38 14.24 17.17 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.5 24.5c0-1.63-.15-3.2-.43-4.7H24v9h12.7c-.55 2.96-2.2 5.47-4.7 7.16l7.2 5.6C43.9 37.6 46.5 31.6 46.5 24.5z"/>
-            <path fill="#FBBC05" d="M9.62 28.4a14.5 14.5 0 010-8.8l-6.38-4.96A22.97 22.97 0 002 24c0 3.63.87 7.06 2.42 10.04l6.38-4.96z"/>
-            <path fill="#34A853" d="M24 46c6.48 0 11.92-2.14 15.9-5.82l-7.2-5.6c-2 1.34-4.55 2.12-8.7 2.12-6.83 0-12.62-4.74-14.38-11.1l-6.38 4.96C6.88 40.02 14.82 46 24 46z"/>
-          </svg>
+        {/* Error Message */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm text-center"
+          >
+            {error}
+          </motion.div>
+        )}
 
-          Continue with Google
-        </button>
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Email Field */}
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Email Address
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="admin@aenaturals.in"
+              className="w-full px-4 py-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+              disabled={loading}
+              required
+            />
+          </div>
+
+          {/* Password Field */}
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Enter your password"
+                className="w-full px-4 py-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all pr-12"
+                disabled={loading}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-green-500/25 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
 
         {/* Divider */}
         <div className="flex items-center gap-3 my-6">
