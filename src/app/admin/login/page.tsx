@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { BRAND } from "@/config/brand.config";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -92,11 +93,11 @@ export default function LoginPage() {
         {/* Branding */}
         <div className="text-center mb-8">
           <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-gradient-to-tr from-green-500 to-emerald-400 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-            AE
+            {BRAND.shortName}
           </div>
 
           <h2 className="text-3xl font-bold text-zinc-800 dark:text-white tracking-tight">
-            AE Naturals
+            {BRAND.name}
           </h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
             Admin Dashboard Access
@@ -192,7 +193,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="mt-6 text-[10px] text-center text-zinc-400 dark:text-zinc-500">
-          © {new Date().getFullYear()} AE Naturals. All rights reserved.
+          © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
         </p>
       </motion.div>
     </div>

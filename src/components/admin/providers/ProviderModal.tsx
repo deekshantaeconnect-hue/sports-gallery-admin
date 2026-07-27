@@ -6,6 +6,7 @@ import React, { useState, useEffect } from "react";
 import { Eye, EyeOff, Save, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Switch } from "../ui/Switch";
+import { BRAND } from "@/config/brand.config";
 
 /* ---------------------- FIELD TYPES ---------------------- */
 
@@ -69,7 +70,7 @@ const PROVIDER_SCHEMAS: ProviderSchema = {
       },
       {
         key: "from",
-        placeholder: "AE Naturals <support@aenaturals.com>",
+        placeholder: `${BRAND.name} ${BRAND.email}`,
         note: "Sender email shown to customers",
       },
     ],
