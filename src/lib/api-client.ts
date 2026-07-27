@@ -50,6 +50,18 @@ apiClient.interceptors.request.use(
     }
     config.headers["x-store-slug"] = BRAND.useStoreName;
 
+    if (typeof window !== "undefined") {
+      let deviceId = localStorage.getItem("ae_admin_device_id");
+      if (!deviceId) {
+        deviceId = typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `admin_device_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        localStorage.setItem("ae_admin_device_id", deviceId);
+      }
+      config.headers["x-device-id"] = deviceId;
+      config.headers["x-device-name"] = navigator.userAgent || "Admin Web Browser";
+    }
+
     return config;
   },
   (error: AxiosError) => Promise.reject(error),
