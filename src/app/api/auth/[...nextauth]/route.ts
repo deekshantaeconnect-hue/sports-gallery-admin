@@ -38,18 +38,24 @@ export const authOptions: NextAuthOptions = {
             const parsedCookies = setCookieParser.parse(setCookieHeader, {
               map: true,
             });
+            const cookieStore = await cookies();
 
-            const refreshToken = parsedCookies.refresh_token?.value;
+            const cookieEntries = [
+              { name: "refresh_token", cookie: parsedCookies.refresh_token },
+              { name: "device_id", cookie: parsedCookies.device_id },
+            ];
 
-            if (refreshToken) {
-              const cookieStore = await cookies();
+            for (const { name, cookie } of cookieEntries) {
+              if (!cookie?.value) continue;
+
               cookieStore.set({
-                name: "refresh_token",
-                value: refreshToken,
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                path: "/",
-                maxAge: COOKIE_MAX_AGE_SECONDS,
+                name,
+                value: cookie.value,
+                httpOnly: cookie.httpOnly ?? true,
+                secure: cookie.secure ?? process.env.NODE_ENV === "production",
+                sameSite: (cookie.sameSite as any) ?? "lax",
+                path: cookie.path ?? "/",
+                maxAge: cookie.maxAge ?? COOKIE_MAX_AGE_SECONDS,
               });
             }
           }
@@ -76,15 +82,22 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }: any) {
       if (user) {
         token.role = user.role;
-        token.accessToken = user.accessToken;
-        token.id = user.id;
+        token.accessToken = user.accessToken ?? token.accessToken;
+        token.id = user.id ?? token.id;
       }
+
+      if (token.accessToken === undefined) {
+        token.accessToken = null;
+      }
+
       return token;
     },
     async session({ session, token }: any) {
-      session.user.role = token.role;
-      session.user.id = token.id;
-      session.accessToken = token.accessToken;
+      if (session.user) {
+        session.user.role = token.role;
+        session.user.id = token.id;
+      }
+      session.accessToken = token.accessToken ?? null;
       return session;
     },
   },

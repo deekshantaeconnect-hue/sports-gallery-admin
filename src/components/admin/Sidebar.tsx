@@ -28,8 +28,8 @@ import {
   Users,
   ChartNoAxesCombined, // ✅ ADDED: Users icon
 } from "lucide-react";
-import { useAuthStore } from "@/store/authStore";
 import { BRAND } from "@/config/brand.config";
+import { logoutUser } from "@/lib/auth-client";
 
 export const Sidebar = ({
   isOpen,
@@ -39,11 +39,9 @@ export const Sidebar = ({
   setIsOpen: (v: boolean) => void;
 }) => {
   const pathname = usePathname();
-  const logoutStore = useAuthStore((state) => state.logout);
 
   const handleLogout = async () => {
-    logoutStore();
-    await signOut({ callbackUrl: "/admin/login" });
+    await logoutUser({ callbackUrl: "/admin/login" });
   };
 
   useEffect(() => {
