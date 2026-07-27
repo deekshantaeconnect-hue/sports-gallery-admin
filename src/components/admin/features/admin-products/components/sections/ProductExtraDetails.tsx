@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import { ProductFormValues } from "../../schemas/product.schema";
+import { BRAND } from "@/config/brand.config";
 
 type SmartEditorProps = {
   name: Path<ProductFormValues>;
@@ -521,7 +522,7 @@ export function ProductExtraDetails() {
 
               <input
                 {...register("extra.manufacturer")}
-                placeholder="e.g. AE Naturals"
+                placeholder={`e.g. ${BRAND.name}`}
                 className="h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-semibold outline-none transition-all focus:border-[#006044] focus:ring-4 focus:ring-[#006044]/10"
               />
             </div>
