@@ -12,8 +12,8 @@ import { BRAND } from "@/config/brand.config";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 export const metadata: Metadata = {
-  title: "Sports Gallery | Sports Finest Products",
-description: "Premium sports products crafted for everyday healthy living.",
+  title: BRAND.title,
+description: BRAND.description,
   icons: {
     icon: [
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },

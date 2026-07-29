@@ -1,15 +1,34 @@
 // src/components/providers/AuthProvider.tsx
 'use client';
 
-import { SessionProvider } from "next-auth/react";
+import { SessionProvider, useSession } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Session } from "next-auth";
 import { useAuthStore } from "@/store/authStore";
 
 interface AuthProviderProps {
   children: React.ReactNode;
   session: Session | null;
+}
+
+function SessionSync({ initialSession }: { initialSession: Session | null }) {
+  const { data: liveSession, status } = useSession();
+
+  useEffect(() => {
+    if (status === "loading") return;
+
+    const activeToken = liveSession?.accessToken ?? initialSession?.accessToken ?? null;
+
+    if (activeToken) {
+      useAuthStore.getState().updateToken(activeToken);
+      return;
+    }
+
+    useAuthStore.getState().logout();
+  }, [initialSession?.accessToken, liveSession?.accessToken, status]);
+
+  return null;
 }
 
 export default function AuthProvider({ children, session }: AuthProviderProps) {
@@ -22,18 +41,9 @@ export default function AuthProvider({ children, session }: AuthProviderProps) {
     },
   }));
 
-  const initialized = useRef(false);
-
-  // Hydrate NextAuth's initial token into Zustand on first load
-  useEffect(() => {
-    if (session?.accessToken && !initialized.current) {
-      useAuthStore.getState().updateToken(session.accessToken);
-      initialized.current = true;
-    }
-  }, [session]);
-
   return (
     <SessionProvider session={session}>
+      <SessionSync initialSession={session} />
       <QueryClientProvider client={queryClient}>
         {children}
       </QueryClientProvider>

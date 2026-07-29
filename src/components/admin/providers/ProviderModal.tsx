@@ -6,6 +6,7 @@ import React, { useState, useEffect } from "react";
 import { Eye, EyeOff, Save, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Switch } from "../ui/Switch";
+import { BRAND } from "@/config/brand.config";
 
 /* ---------------------- FIELD TYPES ---------------------- */
 
@@ -69,7 +70,7 @@ const PROVIDER_SCHEMAS: ProviderSchema = {
       },
       {
         key: "from",
-        placeholder: "AE Naturals <support@aenaturals.com>",
+        placeholder: `${BRAND.name} ${BRAND.email}`,
         note: "Sender email shown to customers",
       },
     ],
@@ -249,33 +250,41 @@ const PROVIDER_SCHEMAS: ProviderSchema = {
         note: "Enable this only for live transactions. Keep disabled while testing in sandbox mode.",
       },
     ],
-    CASHFREE: [
-      {
-        key: "app_id",
-        placeholder: "Enter App ID",
-        note: "Get this from your Cashfree Merchant Dashboard → Developers/API Keys.",
-      },
-      {
-        key: "secret_key",
-        placeholder: "Enter Secret Key",
-        note: "Secret key provided by Cashfree for API authentication.",
-      },
-      {
-        key: "env",
-        placeholder: "sandbox or production",
-        note: 'Type "sandbox" for testing or "production" for live transactions.',
-      },
-      {
-        key: "frontend_url",
-        placeholder: "https://yourdomain.com",
-        note: "Customer-facing website URL where users are redirected after payment.",
-      },
-      {
-        key: "backend_webhook_url",
-        placeholder: "https://api.yourdomain.com/api/v1",
-        note: "Public backend endpoint to receive Cashfree webhooks (e.g., https://api.yourdomain.com/api/v1).",
-      },
-    ],
+    // src/components/admin/providers/ProviderModal.tsx
+// Update the CASHFREE schema (around line 139)
+
+CASHFREE: [
+  {
+    key: "app_id",
+    placeholder: "Enter App ID",
+    note: "Get this from your Cashfree Merchant Dashboard → Developers/API Keys.",
+  },
+  {
+    key: "secret_key",
+    placeholder: "Enter Secret Key",
+    note: "Secret key provided by Cashfree for API authentication.",
+  },
+  {
+    key: "webhook_secret",
+    placeholder: "Enter Webhook Secret",
+    note: "⚠️ IMPORTANT: This is different from the API secret. Generate this from Cashfree Dashboard → Webhooks → Your Webhook → Secret Key.",
+  },
+  {
+    key: "env",
+    placeholder: "sandbox or production",
+    note: 'Type "sandbox" for testing or "production" for live transactions.',
+  },
+  {
+    key: "frontend_url",
+    placeholder: "https://yourdomain.com",
+    note: "Customer-facing website URL where users are redirected after payment.",
+  },
+  {
+    key: "backend_webhook_url",
+    placeholder: "https://api.yourdomain.com/api/v1",
+    note: "Public backend endpoint to receive Cashfree webhooks (e.g., https://api.yourdomain.com/api/v1).",
+  },
+],
   },
 
   SHIPPING: {
@@ -317,6 +326,24 @@ const PROVIDER_SCHEMAS: ProviderSchema = {
       {
         key: "bypassProvider",
         note: "Disable Shiprocket APIs and use custom shipping rules.",
+      },
+    ],
+
+    STORE_PICKUP: [
+      {
+        key: "store_address",
+        placeholder: "Global village front gate, 39/4, behind Global Academy For Learning, Pattanagere, Rajarajeshwari Nagar, Bengaluru, Karnataka - 560059",
+        note: "Store pickup address shown to customers during checkout.",
+      },
+      {
+        key: "pickup_hours",
+        placeholder: "Mon-Sat: 10:00 AM - 8:00 PM",
+        note: "Available store pickup operating hours.",
+      },
+      {
+        key: "pickup_instructions",
+        placeholder: "Bring order confirmation email and a valid photo ID.",
+        note: "Special instructions for order pickup.",
       },
     ],
 

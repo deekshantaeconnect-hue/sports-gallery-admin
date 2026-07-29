@@ -1,6 +1,5 @@
 // src/app/api/auth/[...nextauth]/route.ts
 import NextAuth, { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { cookies } from "next/headers";
 import setCookieParser from "set-cookie-parser";
@@ -14,10 +13,6 @@ const COOKIE_MAX_AGE_SECONDS = MAX_AGE_DAYS * 24 * 60 * 60;
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
     CredentialsProvider({
       name: "Admin Login",
       credentials: {
@@ -25,96 +20,84 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
-          {
-            method: "POST",
-            body: JSON.stringify(credentials),
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-
-        const setCookieHeader = res.headers.get("set-cookie");
-        if (setCookieHeader) {
-          const parsedCookies = setCookieParser.parse(setCookieHeader, {
-            map: true,
-          });
-
-          const refreshToken = parsedCookies.refresh_token?.value;
-
-          if (refreshToken) {
-            const cookieStore = await cookies();
-            cookieStore.set({
-              name: "refresh_token",
-              value: refreshToken,
-              httpOnly: true,
-              secure: process.env.NODE_ENV === "production",
-              path: "/",
-              maxAge: COOKIE_MAX_AGE_SECONDS,
-            });
-          }
-        }
-
-        const data = await res.json();
-        if (res.ok && data.user?.role === "STORE_MANAGER") {
-          return { ...data.user, accessToken: data.access_token };
-        }
-        return null;
-      },
-    }),
-  ],
-  callbacks: {
-    async signIn({ user, account }: any) {
-      if (account?.provider === "google") {
         try {
           const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/users/check-admin?email=${user.email}`,
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+            {
+              method: "POST",
+              body: JSON.stringify({
+                email: credentials?.email,
+                password: credentials?.password,
+              }),
+              headers: { "Content-Type": "application/json" },
+            },
           );
 
           const setCookieHeader = res.headers.get("set-cookie");
           if (setCookieHeader) {
             const parsedCookies = setCookieParser.parse(setCookieHeader, {
-            map: true,
-          });
+              map: true,
+            });
+            const cookieStore = await cookies();
 
-          const refreshToken = parsedCookies.refresh_token?.value;
+            const cookieEntries = [
+              { name: "refresh_token", cookie: parsedCookies.refresh_token },
+              { name: "device_id", cookie: parsedCookies.device_id },
+            ];
 
-            if (refreshToken) {
-              const cookieStore = await cookies();
+            for (const { name, cookie } of cookieEntries) {
+              if (!cookie?.value) continue;
+
               cookieStore.set({
-                name: "refresh_token",
-                value: refreshToken,
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                path: "/",
-                maxAge: COOKIE_MAX_AGE_SECONDS,
+                name,
+                value: cookie.value,
+                httpOnly: cookie.httpOnly ?? true,
+                secure: cookie.secure ?? process.env.NODE_ENV === "production",
+                sameSite: (cookie.sameSite as any) ?? "lax",
+                path: cookie.path ?? "/",
+                maxAge: cookie.maxAge ?? COOKIE_MAX_AGE_SECONDS,
               });
             }
           }
 
           const data = await res.json();
-          if (data.isStoreManager && data.accessToken) {
-            user.accessToken = data.accessToken;
-            user.role = "STORE_MANAGER";
-            return true;
+          
+          if (res.ok && data.user?.role === "STORE_MANAGER") {
+            return { 
+              ...data.user, 
+              accessToken: data.access_token,
+              id: data.user.id,
+            };
           }
-          return false;
+          
+          return null;
         } catch (error) {
-          return false;
+          console.error("Authentication error:", error);
+          return null;
         }
-      }
-      return true;
-    },
+      },
+    }),
+  ],
+  callbacks: {
     async jwt({ token, user }: any) {
       if (user) {
         token.role = user.role;
-        token.accessToken = user.accessToken;
+        token.accessToken = user.accessToken ?? token.accessToken;
+        token.id = user.id ?? token.id;
       }
+
+      if (token.accessToken === undefined) {
+        token.accessToken = null;
+      }
+
       return token;
     },
     async session({ session, token }: any) {
-      session.user.role = token.role;
-      session.accessToken = token.accessToken;
+      if (session.user) {
+        session.user.role = token.role;
+        session.user.id = token.id;
+      }
+      session.accessToken = token.accessToken ?? null;
       return session;
     },
   },

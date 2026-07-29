@@ -23,6 +23,7 @@ import {
   Clock,
   Truck,
   FileText,
+  Store,
 } from "lucide-react";
 import { AdminTrackingLogs } from "../AdminTrackingLogs";
 import { resolveFirstProductImage } from "@/shared/utils/media-normalization";
@@ -375,6 +376,12 @@ export default function AdminOrderDetailsPage({
   const currentStatus = order?.status ? String(order.status) : "PENDING";
   const rawActions = ORDER_TRANSITIONS[currentStatus];
   const availableActions = Array.isArray(rawActions) ? rawActions : [];
+  const isStorePickup =
+    order.courierPartnerId === "STORE_PICKUP" ||
+    order.courierId === "STORE_PICKUP" ||
+    order.courierName === "Store Pickup" ||
+    order.shipment?.provider === "STORE_PICKUP";
+
   const hasAddress = order.addressSnapshot && order.addressSnapshot.name;
 
   // --- ACTION HANDLER ---
@@ -477,7 +484,27 @@ export default function AdminOrderDetailsPage({
               </div>
             </div>
 
-            {hasAddress ? (
+            {isStorePickup ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-emerald-200 p-6">
+                <h3 className="text-lg font-bold text-emerald-950 mb-4 flex items-center gap-2">
+                  <Store className="h-5 w-5 text-emerald-600" /> Store Pickup Details
+                </h3>
+                <div className="text-sm text-gray-600 space-y-2">
+                  <p className="font-semibold text-emerald-900">
+                    Store: {order.store?.name || "Main Store & Warehouse"}
+                  </p>
+                  <div className="text-xs text-gray-500 bg-emerald-50 border border-emerald-100 p-3 rounded-lg">
+                    <span className="font-semibold text-emerald-800 block mb-1">Store Pickup Instructions:</span>
+                    Customer will collect the items at the counter. Verify Order ID: <span className="font-mono font-bold text-gray-950">{order.id?.slice(-6).toUpperCase()}</span>.
+                  </div>
+                  <div className="pt-2 border-t border-gray-100">
+                    <span className="font-semibold text-gray-800 text-xs uppercase block tracking-wider mb-1">Customer Info:</span>
+                    <p className="font-medium text-gray-900">{order.addressSnapshot?.name}</p>
+                    <p className="text-xs text-gray-500">Phone: {order.addressSnapshot?.phone}</p>
+                  </div>
+                </div>
+              </div>
+            ) : hasAddress ? (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-gray-400" /> Shipping Address

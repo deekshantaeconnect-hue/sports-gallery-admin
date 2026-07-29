@@ -3,6 +3,7 @@
 
 "use client";
 
+import { BRAND } from "@/config/brand.config";
 import React, { useState } from "react";
 
 export default function AdminMenuPreview({ groups }: { groups: any[] }) {
@@ -11,7 +12,7 @@ export default function AdminMenuPreview({ groups }: { groups: any[] }) {
   return (
     <div className="w-full bg-white border-b shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex gap-8 items-center">
-        <div className="font-black text-lg">AE NATURALS</div>
+        <div className="font-black text-lg">{BRAND.name}</div>
 
         {groups.map((group, gIdx) => {
           const isLink = group.type === "link";

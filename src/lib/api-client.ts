@@ -4,9 +4,9 @@ import axios, {
   InternalAxiosRequestConfig,
   AxiosResponse,
 } from "axios";
-import { signOut } from "next-auth/react";
 import { useAuthStore } from "../store/authStore";
 import { BRAND } from "@/config/brand.config";
+import { logoutUser, syncAuthAccessToken } from "./auth-client";
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
@@ -49,6 +49,18 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     config.headers["x-store-slug"] = BRAND.useStoreName;
+
+    if (typeof window !== "undefined") {
+      let deviceId = localStorage.getItem("ae_admin_device_id");
+      if (!deviceId) {
+        deviceId = typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `admin_device_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        localStorage.setItem("ae_admin_device_id", deviceId);
+      }
+      config.headers["x-device-id"] = deviceId;
+      config.headers["x-device-name"] = navigator.userAgent || "Admin Web Browser";
+    }
 
     return config;
   },
@@ -98,7 +110,7 @@ apiClient.interceptors.response.use(
         const newToken = res.data.access_token;
         // debugLog(`✅ Refresh SUCCESS! New Token: ...${newToken.slice(-10)}`);
 
-        useAuthStore.getState().updateToken(newToken);
+        syncAuthAccessToken(newToken);
 
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
@@ -111,8 +123,7 @@ apiClient.interceptors.response.use(
         debugLog(`❌ Refresh FAILED: ${refreshError.message}. Logging out.`);
         processQueue(refreshError, null);
 
-        useAuthStore.getState().logout();
-        await signOut({ callbackUrl: "/admin/login" });
+        await logoutUser({ callbackUrl: "/admin/login" });
 
         return Promise.reject(refreshError);
       } finally {
