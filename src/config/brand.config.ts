@@ -5,7 +5,7 @@ export const BRAND = {
   useStoreName: "sports-gallery-store",
 shortName: "AE",
     fullname:"Sports Gallery Pvt Ltd",
-    title:"Nature’s Finest Products",
+    title:"Sports Gallery ",
 
 
   // Replace with your own logo URL (Cloudinary or public image URL)
