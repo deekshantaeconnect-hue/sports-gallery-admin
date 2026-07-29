@@ -10,6 +10,7 @@ shortName: "AE",
 
   // Replace with your own logo URL (Cloudinary or public image URL)
   logo: "https://thumbs.dreamstime.com/b/vector-sports-icons-circle-icon-sign-symbol-pictogram-set-collection-flat-style-isolated-different-sport-equipment-games-66247271.jpg",
+  description:"Premium sports products crafted , and everyday healthy living.",
 
   phone: "+91 9876543210",
   whatsapp: "+91 9876543210",
