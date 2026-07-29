@@ -1,33 +1,30 @@
-// src\config\brand.config.ts
+// src/config/brand.config.ts
 
 export const BRAND = {
-  name: "AE-Naturals",
-  useStoreName: "ae-naturals",
-  logo: "https://res.cloudinary.com/djunjtr5l/image/upload/f_auto,q_auto/v1778848925/logo_rogjqa.png", // <-- Add your logo here (emoji or image path)
+  name: "Sports Gallery",
+  useStoreName: "sports-gallery-store",
 
+  // Replace with your own logo URL (Cloudinary or public image URL)
+  logo: "https://thumbs.dreamstime.com/b/vector-sports-icons-circle-icon-sign-symbol-pictogram-set-collection-flat-style-isolated-different-sport-equipment-games-66247271.jpg",
 
-  phone: "+91 8553463261",
-  whatsapp: "+91 8553463261",
-  email: "care@aenaturals.in",
-
-
-
-
+  phone: "+91 9876543210",
+  whatsapp: "+91 9876543210",
+  email: "support@sportsgallery.com",
 
   address:
-    "39/4, near Global Village front gate, Pattanagere, Rajarajeshwari Nagar, Bengaluru, Karnataka 560059",
+    "MG Road, Bengaluru, Karnataka 560001",
 
   social: {
-    instagram: "https://www.instagram.com/aenaturalsofficial/reels/",
-    facebook: "https://www.facebook.com/Aenaturalsofficial/",
-    twitter: "https://x.com/aenaturalsoffcl",
-    youtube: "https://www.youtube.com/@aenaturals"
+    instagram: "https://www.instagram.com/sportsgallery",
+    facebook: "https://www.facebook.com/sportsgallery",
+    twitter: "https://x.com/sportsgallery",
+    youtube: "https://www.youtube.com/@sportsgallery",
   },
 
   theme: {
-    primary: "#606c38",
-    secondary: "#283618",
-    accent: "#fefae0",
+    primary: "#1565C0",     // Sports Blue
+    secondary: "#0D47A1",
+    accent: "#E3F2FD",
 
     success: "#10B981",
     warning: "#F59E0B",
@@ -35,13 +32,12 @@ export const BRAND = {
     info: "#3B82F6",
 
     neutral: {
-      light: "#dda15e",
-      dark: "#bc6c25",
+      light: "#F9FAFB",
+      dark: "#111827",
       border: "#E5E7EB",
-      muted: "#502858",
+      muted: "#6B7280",
     },
 
-    // 🔥 ADD THESE (Missing in your system)
     surface: {
       base: "#FFFFFF",
       elevated: "#F8FAFC",
@@ -49,16 +45,15 @@ export const BRAND = {
     },
 
     darkSurface: {
-      base: "#0F1715",
-      elevated: "#16211E",
-      glass: "rgba(15,23,21,0.7)",
+      base: "#111827",
+      elevated: "#1F2937",
+      glass: "rgba(17,24,39,0.7)",
     },
 
     state: {
       hover: "0.08",
       active: "0.16",
       focus: "0.24",
-    }
+    },
   },
-
 };
