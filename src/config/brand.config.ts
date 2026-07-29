@@ -3,7 +3,7 @@
 export const BRAND = {
   name: "Sports Gallery",
   useStoreName: "sports-gallery-store",
-
+shortName: "AE",
   // Replace with your own logo URL (Cloudinary or public image URL)
   logo: "https://thumbs.dreamstime.com/b/vector-sports-icons-circle-icon-sign-symbol-pictogram-set-collection-flat-style-isolated-different-sport-equipment-games-66247271.jpg",
 
