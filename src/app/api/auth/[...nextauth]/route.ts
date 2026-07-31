@@ -1,108 +1,67 @@
-// src/app/api/auth/[...nextauth]/route.ts
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { cookies } from "next/headers";
-import setCookieParser from "set-cookie-parser";
-
-const MAX_AGE_DAYS = parseInt(
-  process.env.REFRESH_TOKEN_MAX_AGE_DAYS || "7",
-  10,
-);
-const COOKIE_MAX_AGE_SECONDS = MAX_AGE_DAYS * 24 * 60 * 60;
 
 export const authOptions: NextAuthOptions = {
-  session: { strategy: "jwt" },
   providers: [
     CredentialsProvider({
-      name: "Admin Login",
+      name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        email: { label: "Email", type: "text" },
       },
-      async authorize(credentials) {
-        try {
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
-            {
-              method: "POST",
-              body: JSON.stringify({
-                email: credentials?.email,
-                password: credentials?.password,
-              }),
-              headers: { "Content-Type": "application/json" },
-            },
-          );
+      async authorize(credentials, req) {
+        // This should hit your NestJS /users/check-admin or login endpoint
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/check-admin?email=${credentials?.email}`, {
+          method: 'GET',
+          headers: { "Content-Type": "application/json" }
+        });
+        
+        const data = await res.json();
 
-          const setCookieHeader = res.headers.get("set-cookie");
-          if (setCookieHeader) {
-            const parsedCookies = setCookieParser.parse(setCookieHeader, {
-              map: true,
-            });
-            const cookieStore = await cookies();
-
-            const cookieEntries = [
-              { name: "refresh_token", cookie: parsedCookies.refresh_token },
-              { name: "device_id", cookie: parsedCookies.device_id },
-            ];
-
-            for (const { name, cookie } of cookieEntries) {
-              if (!cookie?.value) continue;
-
-              cookieStore.set({
-                name,
-                value: cookie.value,
-                httpOnly: cookie.httpOnly ?? true,
-                secure: cookie.secure ?? process.env.NODE_ENV === "production",
-                sameSite: (cookie.sameSite as any) ?? "lax",
-                path: cookie.path ?? "/",
-                maxAge: cookie.maxAge ?? COOKIE_MAX_AGE_SECONDS,
-              });
-            }
-          }
-
-          const data = await res.json();
-          
-          if (res.ok && data.user?.role === "STORE_MANAGER") {
-            return { 
-              ...data.user, 
-              accessToken: data.access_token,
-              id: data.user.id,
-            };
-          }
-          
-          return null;
-        } catch (error) {
-          console.error("Authentication error:", error);
-          return null;
+        if (res.ok && data.isStoreManager && data.accessToken) {
+          return {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.name,
+            role: data.user.role,
+            accessToken: data.accessToken,
+          };
         }
-      },
-    }),
+        return null;
+      }
+    })
   ],
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user }) {
+      // Initial sign in
       if (user) {
         token.role = user.role;
-        token.accessToken = user.accessToken ?? token.accessToken;
-        token.id = user.id ?? token.id;
+        token.accessToken = user.accessToken;
+        // Optional: Add token expiry time from your backend if available
+        // token.accessTokenExpires = Date.now() + 15 * 60 * 1000; 
       }
-
-      if (token.accessToken === undefined) {
-        token.accessToken = null;
-      }
-
+      
+      // Note: If your backend access token expires, you must implement
+      // the refresh logic right here in the JWT callback to fetch a new
+      // access token from NestJS and update `token.accessToken`.
       return token;
     },
-    async session({ session, token }: any) {
+    async session({ session, token }) {
+      // Expose the access token and role to the client-side NextAuth session
+      session.accessToken = token.accessToken as string;
       if (session.user) {
-        session.user.role = token.role;
-        session.user.id = token.id;
+        session.user.role = token.role as string;
       }
-      session.accessToken = token.accessToken ?? null;
       return session;
-    },
+    }
   },
-  pages: { signIn: "/admin/login" },
-  secret: process.env.NEXTAUTH_SECRET,
+  pages: {
+    signIn: "/admin/login",
+    error: "/admin/login",
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
 };
 
 const handler = NextAuth(authOptions);

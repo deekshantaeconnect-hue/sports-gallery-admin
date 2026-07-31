@@ -1,4 +1,5 @@
 // src/components/admin/features/admin-products/components/sections/ProductForm.tsx
+
 "use client";
 
 import React, { useEffect, useRef } from "react";
@@ -141,6 +142,47 @@ export function ProductForm({
                     rows={5}
                     className="w-full p-5 border rounded-3xl outline-none focus:ring-2 focus:ring-[#006044] font-medium leading-relaxed bg-white"
                   />
+                </div>
+
+                {/* 🔥 ADD THIS NEW GST BLOCK HERE */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-100">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                      GST Percentage (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      {...form.register("gstPercentage", {
+                        valueAsNumber: true,
+                      })}
+                      className="w-full p-4 border rounded-2xl focus:ring-2 focus:ring-[#006044] outline-none font-bold text-lg bg-white"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                      Tax Calculation
+                    </label>
+                    <div className="flex items-center h-[60px] px-4 border rounded-2xl bg-white focus-within:ring-2 focus-within:ring-[#006044]">
+                      <label className="flex items-center gap-3 cursor-pointer w-full">
+                        <input
+                          type="checkbox"
+                          {...form.register("isGstInclusive")}
+                          className="w-5 h-5 accent-[#006044]"
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-zinc-800">
+                            Price includes GST
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-medium">
+                            Uncheck to add tax on top of base price
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
 

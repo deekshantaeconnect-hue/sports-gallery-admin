@@ -43,6 +43,9 @@ export const productFormSchema = z.object({
   isActive: z.boolean(),
   isFeatured: z.boolean(),
   isCodEnabled: z.boolean(),
+
+  gstPercentage: z.coerce.number().min(0).max(100).optional().default(0),
+  isGstInclusive: z.boolean().optional().default(true),
   
   // 🔥 UPDATED: Shifted from simple URL arrays to an object array using mediaItemSchema
   images: z.array(mediaItemSchema).min(1, "At least one image is required"),

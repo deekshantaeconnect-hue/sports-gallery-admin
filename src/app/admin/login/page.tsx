@@ -1,19 +1,17 @@
-// src/app/admin/login/page.tsx
-
 'use client';
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { BRAND } from "@/config/brand.config";
+import { useAuthStore } from "@/store/authStore";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const setUser = useAuthStore((state) => state.setUser);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -23,7 +21,6 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     
-    // Validation
     if (!formData.email || !formData.password) {
       setError('Please fill in all fields');
       return;
@@ -31,22 +28,48 @@ export default function LoginPage() {
 
     try {
       setLoading(true);
-      const result = await signIn("credentials", {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
-        callbackUrl: "/admin",
-      });
 
-      if (result?.error) {
-        setError('Invalid email or password');
+      // 1. Fetch token and validation directly from backend endpoint
+      const checkRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/check-admin?email=${encodeURIComponent(formData.email)}`,
+        {
+          method: 'GET',
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      const checkData = await checkRes.json();
+
+      if (!checkRes.ok || !checkData.isStoreManager || !checkData.accessToken) {
+        setError('Unauthorized: Manager access required.');
         setLoading(false);
         return;
       }
 
-      // Successful login
-      router.push("/admin");
-      router.refresh();
+      // 2. Trigger NextAuth sign in for middleware session cookies
+      const result = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError('Invalid credentials');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Inject token and user into Zustand store so apiClient picks it up instantly
+      setUser(
+        {
+          id: checkData.user.id,
+          name: checkData.user.name,
+          role: checkData.user.role,
+        },
+        checkData.accessToken
+      );
+
+      // 4. Hard redirect to dashboard to clear initialization race conditions
+      window.location.href = "/admin";
     } catch (err) {
       console.error(err);
       setError('An error occurred during login');
@@ -59,28 +82,22 @@ export default function LoginPage() {
       ...formData,
       [e.target.name]: e.target.value,
     });
-    // Clear error when user types
     if (error) setError(null);
   };
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-100 via-white to-zinc-200 dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-900 px-4 overflow-hidden">
-
-      {/* Background Glow */}
       <div className="absolute inset-0">
         <div className="absolute -top-40 -left-40 h-[500px] w-[500px] bg-green-300/30 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -right-40 h-[500px] w-[500px] bg-blue-300/30 rounded-full blur-3xl" />
       </div>
 
-      {/* Card */}
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="relative w-full max-w-md rounded-3xl bg-white/80 dark:bg-zinc-900/80 backdrop-blur-2xl p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] border border-zinc-200 dark:border-zinc-800"
       >
-
-        {/* Loading Overlay */}
         {loading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md rounded-3xl">
             <Loader2 className="h-8 w-8 animate-spin text-zinc-700 dark:text-zinc-200" />
@@ -90,7 +107,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Branding */}
         <div className="text-center mb-8">
           <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-gradient-to-tr from-green-500 to-emerald-400 flex items-center justify-center text-white font-bold text-lg shadow-lg">
             {BRAND.shortName}
@@ -104,7 +120,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Error Message */}
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -115,9 +130,7 @@ export default function LoginPage() {
           </motion.div>
         )}
 
-        {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Email Field */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
               Email Address
@@ -135,7 +148,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Password Field */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
               Password
@@ -158,16 +170,11 @@ export default function LoginPage() {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
                 tabIndex={-1}
               >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
@@ -177,21 +184,18 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Divider */}
         <div className="flex items-center gap-3 my-6">
           <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
           <span className="text-xs text-zinc-400">Secure Access</span>
           <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
         </div>
 
-        {/* Info */}
         <p className="text-xs text-center text-zinc-500 dark:text-zinc-400 leading-relaxed">
           Only authorized administrator emails are allowed.
           <br />
           Unauthorized access is strictly prohibited.
         </p>
 
-        {/* Footer */}
         <p className="mt-6 text-[10px] text-center text-zinc-400 dark:text-zinc-500">
           © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
         </p>
